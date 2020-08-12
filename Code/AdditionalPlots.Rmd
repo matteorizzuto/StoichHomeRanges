@@ -1,0 +1,1570 @@
+---
+title: "Supporting Visuals for Stoichiometry of Home Range"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+author: "Matteo Rizzuto"
+output:
+  rmdformats::html_clean:
+    self_contained: false
+    thumbnails: true
+    lightbox: true
+    gallery: true
+    highlight: tango
+    code_folding: hide
+    fig_width: 12
+    fig_height: 8
+    df_print: paged
+  pdf_document:
+    citation_package: biblatex
+    dev: pdf
+    fig_caption: true
+    fig_width: 7
+    fig_height: 2.64
+    highlight: tango
+    keep_tex: true
+    latex_engine: pdflatex
+    toc: true
+    df_print: kable    
+fontsize: 11pt
+geometry: margin=1in
+documentclass: article    
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/functional-ecology.csl
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r, eval=FALSE, echo=TRUE, tidy=TRUE}
+# if running as a standalone, change chunk options to evaluation this 
+# code chunk
+knit("HomeRangeEstimation.Rmd", tangle = TRUE)
+source("HomeRangeEstimation.R")
+
+knit("ModelStoichHR.Rmd", tangle = TRUE)
+source("ModelStoichHR.R")
+
+knit("75kUDHRModels.Rmd", tangle = TRUE)
+source("75kUDHRModels.R")
+
+knit("90kUDHRModels.Rmd", tangle = TRUE)
+source("90kUDHRModels.R")
+```
+
+In this section, we produce both the figures included in the main text and 
+additional visual materials to support our project. First, we set package `tmap` 
+to plotting mode, so all maps will be shown as plots unless otherwise specified. 
+```{r tmap-options, echo=TRUE, tidy=TRUE}
+tmap_mode("plot")
+```
+
+## Manuscript Figures {.tabset .tabset-fade .tabset-pills}
+Here we provide the code to produce the main text's Figure 1d and Figure 2. 
+First, we need to allocate several vectors containing custom-made lists of 
+labels, shapes, and colours to highlight data points representing hares with 2 
+years of data collection. 
+
+```{r aes-prep, echo=TRUE, tidy=TRUE}
+# Create a set of labels that only contains the ear tag labels for the 
+# individuals that had multiple years of triangulation
+cf_labs <- as.character(hare.stoich$EarTag) # store ear tag labels in a vector
+cf_labs[3:7] <- ""
+cf_labs[10:13] <- ""
+cf_labs[15:17] <- ""
+cf_labs[19:26] <- ""
+cf_labs[28:30] <- ""
+cf_labs[32:34] <- ""
+
+# create vectors to assign shapes to data points in graph
+pair_shapes <- rep(21, 34)
+names(pair_shapes) <- sort(hare.stoich$EarTag)
+pair_shapes[c(2, 3)] <- 22
+pair_shapes[c(11, 12)] <- 23
+pair_shapes[c(31, 32)] <- 24
+pair_shapes[c(33, 34)] <- 25
+
+
+# repeat but this time for colors
+colorCount <- length(hare.stoich$EarTag)
+pair_colors <- colorRampPalette(RColorBrewer::brewer.pal(8, "Set2"))(colorCount)
+names(pair_colors) <- sort(hare.stoich$EarTag)
+
+pair_colors[c(2, 3)] <- "#79B1D3"
+pair_colors[c(11, 12)] <- "#B89B74"
+pair_colors[c(31, 32)] <- "#FFFF99"
+pair_colors[c(33, 34)] <- "#CB904D"
+```
+
+
+Now, we can create the plots. Note that we only show the code necessary to produce
+each figure in the main text here, not the figure itself. 
+
+### Figure 1d
+```{r fig1d, echo=TRUE, tidy=TRUE}
+vis1 <- ggplot(hare.stoich, aes(x = VAAN_CN_mean, y = VAAN_CN_CVar)) + 
+  geom_point(aes(fill = EarTag, shape = EarTag, size = HRsize)) + 
+  scale_fill_manual(name= "Ear tag", 
+                    values = pair_colors) +
+  scale_shape_manual(name = "Ear tag", 
+                     values = pair_shapes) +
+  scale_size_continuous(name = "Home Range (ha)", range = c(3,12), breaks = scales::pretty_breaks(3)) +
+  xlab("Average Blueberry C:N") + 
+  ylab("Blueberry C:N CV") + 
+  guides(fill = guide_legend(override.aes = list(size=5)), size = guide_legend(override.aes = list(shape = 21))) +
+  geom_text_repel(aes(x = VAAN_CN_mean, y = VAAN_CN_CVar, label = EarTag), size = 5, box.padding = 1.25) + 
+  theme_classic() + theme(text = element_text(size = 35), legend.position = "bottom", legend.box = "vertical", legend.box.just = "left")
+
+# ggsave(vis1, filename = "../Results/MeanvsCV_vaanCN.pdf", device = "pdf", dpi = 600, width = 12, height = 18)
+```
+
+### Figure 2 
+
+```{r fig2-plots, echo=TRUE, tidy=TRUE}
+# Blueberry Mean C:N - 50% kUD
+vis2_50kUD <- ggplot(hare.stoich, aes(x = VAAN_CN_mean, y = HRsize)) + 
+  geom_smooth(data = fortify(vaanCNhr), method = "lm", color = "grey", alpha = 0.15) + 
+  geom_point(aes(fill = EarTag, shape = EarTag), size = 5) +
+  scale_fill_manual(name= "Ear tag", 
+                    values = pair_colors) +
+  scale_shape_manual(name = "Ear tag", 
+                     values = pair_shapes) +
+  ylab("Home Range size - 50% kUD (ha)") + 
+  xlab(" ") +
+  # geom_text_repel(aes(x = VAAN_CN_mean, y = HRsize, label = EarTag), size = 5) + 
+  theme_classic() + theme(text = element_text(size = 22))
+
+# Blueberry Mean C:N - 75% kUD
+vis2_75kUD <- ggplot(hare.stoich.75, aes(x = VAAN_CN_mean, y = HRsize)) + 
+  geom_smooth(data = fortify(vaanCNhr.75), method = "lm", color = "grey", alpha = 0.15) + 
+  geom_point(aes(fill = EarTag, shape = EarTag), size = 5) +
+  scale_fill_manual(name= "Ear tag", 
+                    values = pair_colors) +
+  scale_shape_manual(name = "Ear tag", 
+                     values = pair_shapes) +
+  ylab("Home Range size - 75% kUD (ha)") + 
+  xlab("Average Blueberry C:N") +
+  # geom_text_repel(aes(x = VAAN_CN_mean, y = HRsize, label = EarTag), size = 5) + 
+  theme_classic() + theme(text = element_text(size = 22))
+
+# Blueberry Mean C:N - 90% kUD
+vis2_90kUD <- ggplot(hare.stoich.90, aes(x = VAAN_CN_mean, y = HRsize)) + 
+  geom_smooth(data = fortify(vaanCNhr.90), method = "lm", color = "grey", alpha = 0.15) + 
+  geom_point(aes(fill = EarTag, shape = EarTag), size = 5) +
+  scale_fill_manual(name= "Ear tag", 
+                    values = pair_colors) +
+  scale_shape_manual(name = "Ear tag", 
+                     values = pair_shapes) +
+  ylab("Home Range size - 90% kUD (ha)") + 
+  xlab(" ") +
+  # geom_text_repel(aes(x = VAAN_CN_mean, y = HRsize, label = EarTag), size = 5) + 
+  theme_classic() + theme(text = element_text(size = 22))
+
+# arrange the three "mean" plots into one figure
+vis2all <- vis2_50kUD + vis2_75kUD + vis2_90kUD + plot_layout(ncol = 3, nrow = 1, guides = "collect") + plot_annotation(tag_levels = "a", tag_prefix = "(", tag_suffix = ")")
+# save it
+# ggsave(vis1all, filename = "../Results/HRvAVGvaanCN.png", device = "png", dpi = 300, width = 10, height = 7)
+
+# Blueberry C:N Coefficient of Variation - 50% kUD
+vis3_50kUD <- ggplot(hare.stoich, aes(x = VAAN_CN_CVar, y = HRsize)) + 
+  geom_smooth(data = fortify(vaanCNcvhr), method = "lm", color = "grey", alpha = 0.15) + 
+  geom_point(aes(fill = EarTag, shape = EarTag), size = 5) + 
+  scale_fill_manual(name= "Ear tag", 
+                    values = pair_colors) +
+  scale_shape_manual(name = "Ear tag", 
+                     values = pair_shapes) +
+  ylab("Home Range size - 50% kUD (ha)") + 
+  xlab(" ") + 
+  # geom_text_repel(aes(x = VAAN_CN_CVar, y = HRsize, label = EarTag), size = 5) + 
+  theme_classic() + theme(text = element_text(size = 22))
+
+# Blueberry C:N Coefficient of Variation - 75% kUD
+vis3_75kUD <- ggplot(hare.stoich.75, aes(x = VAAN_CN_CVar, y = HRsize)) + 
+  geom_smooth(data = fortify(vaanCNcvhr.75), method = "lm", color = "grey", alpha = 0.15) + 
+  geom_point(aes(fill = EarTag, shape = EarTag), size = 5) + 
+  scale_fill_manual(name= "Ear tag", 
+                    values = pair_colors) +
+  scale_shape_manual(name = "Ear tag", 
+                     values = pair_shapes) +
+  ylab("Home Range size - 75% kUD (ha)") + 
+  xlab("Blueberry C:N CV") + 
+  # geom_text_repel(aes(x = VAAN_CN_CVar, y = HRsize, label = EarTag)) + 
+  theme_classic() + theme(text = element_text(size = 22))
+
+# Blueberry C:N Coefficient of Variation - 90% kUD
+vis3_90kUD <- ggplot(hare.stoich.90, aes(x = VAAN_CN_CVar, y = HRsize)) + 
+  geom_smooth(data = fortify(vaanCNcvhr.90), method = "lm", color = "grey", alpha = 0.15) + 
+  geom_point(aes(fill = EarTag, shape = EarTag), size = 5) + 
+  scale_fill_manual(name= "Ear tag", 
+                    values = pair_colors) +
+  scale_shape_manual(name = "Ear tag", 
+                     values = pair_shapes) +
+  ylab("Home Range size - 90% kUD (ha)") + 
+  xlab(" ") + 
+  # geom_text_repel(aes(x = VAAN_CN_CVar, y = HRsize, label = EarTag), size = 5) + 
+  theme_classic() + theme(text = element_text(size = 22))
+
+# arrange the three "coefficient of variation" plots into a single figure
+vis3all <- vis3_50kUD + vis3_75kUD + vis3_90kUD + plot_layout(ncol = 5, nrow = 1, guides = "collect") + plot_annotation(tag_levels = "a", tag_prefix = "(", tag_suffix = ")")
+# save it
+# ggsave(vis3all, filename = "../Results/HRvVaanCNCVar.png", device = "png", dpi = 300, width = 10, height = 7)
+
+# now, to create Figure 2 in the ms, arrange all six plots just produced into a
+# 2 rows by 3 columns figure
+visall <- vis2_50kUD + vis2_75kUD + vis2_90kUD + vis3_50kUD + vis3_75kUD + vis3_90kUD + plot_layout(ncol = 3, nrow = 2, guides = "collect") + plot_annotation(tag_levels = "a", tag_prefix = "(", tag_suffix = ")")
+
+# save it
+ggsave(visall, filename = "../Results/VAAN_HRvsCN.pdf", device = "pdf", dpi = 600, width = 25, height = 15)
+```
+
+### Elemental concentrations of N and P in Red Maple and Blueberry
+
+Here we use boxplots to visualize data on the elemental
+(% dry weight) composition of both Red Maple and Blueberry. Note that
+we report the figure itself in the SI (Figure SXX), so that here we 
+only show the code necessary to produce it.
+
+In the code chunk below, we begin by loading the full dataset for the plant SOI
+stoichiometry data. This dataset includes the following variables:
+
+* **SampleID**, a unique alphanumeric code that capture the site, location within the site, and species of each sample
+* **N**, **P**, **K**, **Mg**, **Ca**, **C** ,the % dry weight content of Nhe corresponding element in a given sample; elements include Nitrogen, Phosphorus, Potassium (K), Magnesium, Calcium, and Carbon
+* **SiteCode**, **TrapName**, **Species**, **PlotName**, additional subsetting variables
+
+After loading the dataset, we use `select()` in package `dplyr` to remove 
+unnecessary columns and only retain information on site and location within the 
+site of collection, Species, and content of N, P, and C. We then `filter` the
+dataset to remove information from outside the hare study area (site code 
+**BL**). Finally, we use function `ggplot2` and function `geom_boxjitter()` 
+from package `ggpol` to plot the stoichiometry data by species in the hare study
+area.
+
+```{r acru-vaan-ep, echo=TRUE, tidy=TRUE}
+# load the plant stoichiometry data. 
+epData <- read.csv("../Data/StoichFromLabAnalysis_Clean_2017Feb25.csv", header = T) %>% as_tibble() %>%
+  mutate(., across(where(is.character), str_trim)) %>% 
+  mutate_if(., is.character, as.factor) %>% 
+  dplyr::select(., "SiteCode", "TrapName", "Species", "N", "P", "C") %>% 
+  filter(., SiteCode == "BL" & Species != "ABBA" & Species != "BEPA") %>% 
+  droplevels() %>%
+  pivot_longer(., cols = N:C, names_to = "Element", values_to ="Content") 
+
+epPalette <- c("#f1b6da","#b8e186")
+
+epPlot <- ggplot(data = epData, aes(x = Species, y = Content, fill = Species)) + 
+  scale_fill_manual(values = epPalette) +
+  scale_color_manual(values = epPalette) +
+  geom_boxjitter(aes(fill = Species), jitter.shape = 21, outlier.shape = 21, 
+                 outlier.intersect = TRUE, alpha = 0.75,
+                 jitter.size = 3, outlier.size = 3) +
+  ylab("Element Content (% dry weight)") +
+  scale_x_discrete(labels = c("Red Maple", "Blueberry")) +
+  facet_wrap(~Element, scales = "free_y")+
+  theme_classic() +
+  theme(legend.position = "none",
+        text = element_text(size = 22))
+
+ggsave(epPlot, filename = "../Results/epPlot.pdf", device = "pdf", dpi = 600, width = 12, height = 8)
+```
+ 
+### Browsing Data visualization
+
+Here we present a simple bar plot of the frequency with which we recorded browsing
+by snowshoe hare on our four plant species of interest. We collected browsing data 
+during the summer of 2016, as we collected samples to describe and model the
+elemental phenotype of each plant species. BLueberry and red maple are, overall,
+the more browsed plants in our study area, followed by white birch. However, no
+StDM ranked higher than the intercept for white birch, so we excluded it from
+our analyses of home range size and plant stoichiometry.
+```{r plant-browse, echo=TRUE, tidy=TRUE}
+browseData <- read.csv("../Data/Plant_Browse.csv", header = TRUE) %>% dplyr::rename(., c(hareBrowse = porp._H_browse)) %>% dplyr::select(., -porp._M_browse)
+
+# head(browseData)
+
+browseData$hareBrowse <- as.factor(browseData$hareBrowse)
+
+species_labeller <- c(
+  "ABBA" = "Balsam Fir",
+  "ACRU" = "Red Maple",
+  "BEPA" = "White Birch",
+  "VAAN" = "Blueberry"
+)
+
+
+ggplot(data = browseData, aes(x = hareBrowse)) + 
+  geom_bar(aes(fill = Species, col = Species), alpha = 0.5) + 
+  scale_x_discrete(labels = c("Not Browsed", "Browsed")) +
+  scale_fill_ptol() +
+  scale_color_ptol() +
+  xlab("Hare Browsing") +
+  ylab(" ") +
+  facet_wrap(.~Species, ncol = 4, nrow = 1, 
+             labeller = as_labeller(species_labeller),) + 
+  theme_classic() +
+  theme(legend.position = "none",
+        text = element_text(size = 12))
+```
+
+### Relationship among Body Weight, Age, and Sex
+
+Here we show the relationships between snowshoe hare body weight and age, and 
+body weight and sex in our sample. Note that we could not build a true correlation
+matrix or run a true correlation analysis due to the categorical nature of both 
+age and sex. 
+
+We use body weight as a proxy for age in our models due to the fairly strong 
+differences between young and adult body weight. Conversely, while no clear 
+body weight difference emerges between sexes, we exclude the variable sex from our
+analyses due to the lack of clear evidence of a difference in the elemental 
+phenotype between sexes snowshoe hares [@Rizzuto2019] and because of the overall
+evidence of females being --- on average --- larger than males [@Feldhamer2003].
+```{r hare-bw-age-sex, echo=TRUE, tidy=TRUE }
+hare.rich$Age <- factor(hare.rich$Age, levels = c("Young", "Adult", "Unknown"))
+
+age <- ggplot(data = hare.rich, aes(x = Age, y = WeightSSH_g)) + geom_boxplot() + ylab("Body Weight (g)") + theme_classic() + theme(panel.background = element_rect(fill = "transparent"), plot.background = element_rect(fill = "transparent", color = NA), axis.text = element_text(size = 16), axis.title = element_text(size = 20))
+
+sex <- ggplot(data = hare.rich, aes(x = Sex, y = WeightSSH_g)) + geom_boxplot() + ylab("Body Weight (g)") + theme_classic() + theme(panel.background = element_rect(fill = "transparent"), plot.background = element_rect(fill = "transparent", color = NA), axis.text = element_text(size = 16), axis.title = element_text(size = 20))  
+
+age + sex
+```
+
+
+### Stoichiometric Ratios values vs Individuals' Core Area Size {.tabset .tabset-fade .tabset-pills}
+
+#### C:N Ratio
+```{r ACRU-HR-1, echo=TRUE, tidy=TRUE}
+ggplot(hare.stoich, aes(x = ACRU_CN_mean, y = HRsize, shape = SamplingYear)) + 
+  geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
+  xlab("Red Maple Mean C:N") + 
+  ylab("Home Range Size (ha)") + 
+  theme_classic()
+```
+
+```{r VAAN-HR-1, echo=TRUE, tidy=TRUE}
+ggplot(hare.stoich, aes(x = VAAN_CN_mean, y = HRsize, shape = SamplingYear)) + 
+  geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) +
+  xlab("Blueberry Mean C:N") + 
+  ylab("Home Range Size (ha)") + 
+  theme_classic()
+```
+
+#### N:P Ratio
+```{r ACRU-HR-2, echo=TRUE, tidy=TRUE}
+ggplot(hare.stoich, aes(x = ACRU_NP_mean, y = HRsize, shape = SamplingYear)) + geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + xlab("Red Maple Mean N:P") + ylab("Home Range Size (ha)") + theme_classic()
+```
+
+```{r VAAN-HR-2, echo=TRUE, tidy=TRUE}
+ggplot(hare.stoich, aes(x = VAAN_NP_mean, y = HRsize, shape = SamplingYear)) + 
+  geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
+  xlab("Blueberry Mean N:P") + 
+  ylab("Home Range Size (ha)") + 
+  theme_classic()
+```
+
+#### C:P Ratio
+```{r VAAN-HR-3, echo=TRUE, tidy=TRUE}
+ggplot(hare.stoich, aes(x = VAAN_CP_mean, y = HRsize, shape = SamplingYear)) + 
+  geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
+  xlab("Blueberry C:P") + 
+  ylab("Home Range Size (ha)") + 
+  theme_classic()
+```
+
+### Stoichiometric ratios mean vs CV {.tabset .tabset-fade .tabset-pills}
+
+#### Red Maple C:N
+```{r acrucn-mean-vs-cvar, echo=TRUE, tidy=TRUE}
+ggplot(hare.stoich, aes(ACRU_CN_mean, y = ACRU_CN_CVar)) + 
+  geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
+  xlab("Average") + 
+  ylab("Coefficient of Variation") + 
+  theme_classic() 
+```
+
+#### Red Maple N:P
+```{r acrunp-mean-vs-cvar, echo=TRUE, tidy=TRUE}
+ggplot(hare.stoich, aes(ACRU_NP_mean, y = ACRU_NP_CVar)) + 
+  geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
+  xlab("Average") + 
+  ylab("Coefficient of Variation") + 
+  theme_classic() 
+```
+
+#### Blueberry C:N
+```{r vaancn-mean-vs-cvar, echo=TRUE, tidy=TRUE}
+ggplot(hare.stoich, aes(VAAN_CN_mean, y = VAAN_CN_CVar)) + 
+  geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
+  xlab("Average") + 
+  ylab("Coefficient of Variation") + 
+  theme_classic() 
+```
+
+#### Blueberry N:P
+```{r vaannp-mean-vs-cvar, echo=TRUE, tidy=TRUE}
+ggplot(hare.stoich, aes(VAAN_NP_mean, y = VAAN_NP_CVar)) + 
+  geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) +
+  xlab("Average") + 
+  ylab("Coefficient of Variation") + 
+  theme_classic() 
+```
+
+#### Blueberry C:P
+```{r vaancp-mean-vs-cvar, echo=TRUE, tidy=TRUE}
+ggplot(hare.stoich, aes(VAAN_CP_mean, y = VAAN_CP_CVar)) + 
+  geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
+  xlab("Average") + 
+  ylab("Coefficient of Variation") + 
+  theme_classic() 
+```
+
+### Overlap vs stoich {.tabset .tabset-fade .tabset-pills}
+
+We want to investigate if, in areas of high resource quality (i.e., low average  
+stoichiometric ratios values) or low variability in resource quality (i.e., low 
+coefficient of variation values), we have more or less overlap among snowshoe 
+hare home ranges. Here, we calculate mean utilization distribution overlap 
+using `overlap` in `ctmm`, then plot it against the home range's mean
+stoichiometry and coefficient of variation (CV).
+
+```{r overlap, echo=TRUE, tidy=TRUE, message=FALSE}
+# calculate overlap
+aKDEolap <- overlap(homeRanges, level = 0.95, debias = TRUE) 
+
+# convert to dataframe of mean overlap
+meanAKDEolap <- adply(aKDEolap, c(1,2)) %>%  # convert to dataframe
+  dplyr::rename(., UD1=X1, UD2=X2) %>% # rename X1 and X2 to identify the UDs being compared
+  dplyr::select(., UD1, UD2, est) %>% # retain only necessary columns
+  dplyr::filter(., est != 1) %>% # remove overlap measure of self-to-self
+  dplyr::group_by(., UD2, .add = TRUE) %>% # group by the right hand size of the comparison
+  dplyr::summarise(., mean = mean(est), n = n()) %>% # get the mean overlap by group, i.e. collar frequency
+  dplyr::rename(., CollarFrequency = UD2, meanBA = mean) %>% # rename variables once again
+  dplyr::select(., -n) # drop unnecessary columns
+
+# now, join with the hare.stoich dataframe
+hare.stoich.olap <- inner_join(hare.stoich, meanAKDEolap)
+
+# plots of mean overlap vs stoich
+a1 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = ACRU_CN_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Red Maple C:N") + ggtitle("Red Maple C:N") + theme_classic()
+
+a2 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = ACRU_NP_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Red Maple N:P") + ggtitle("Red Maple N:P") + theme_classic()
+
+a3 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_CN_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Blueberry C:N") + ggtitle("Blueberry C:N") + theme_classic()
+
+a4 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_NP_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Blueberry N:P") + ggtitle("Blueberry N:P") + theme_classic()
+
+a5 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_CP_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Blueberry C:P") + ggtitle("Blueberry C:P") + theme_classic()
+
+atot <- a1 + a2 + a3 + a4 + a5 + plot_annotation(title = "Mean Stoichiometry and Mean home range overlap (BA)") + plot_layout(guides = "collect")
+
+atot
+
+# plots of mean overlap vs stoich CV
+b1 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = ACRU_CN_CVar)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Red Maple C:N CV") + ggtitle("Red Maple C:N") + theme_classic()
+
+b2 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = ACRU_NP_CVar)) +  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Red Maple N:P CV") + ggtitle("Red Maple N:P") + theme_classic()
+
+b3 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_CN_CVar)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Blueberry C:N CV") + ggtitle("Blueberry C:N") + theme_classic()
+
+b4 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_NP_CVar)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1)  + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Blueberry N:P CV") + ggtitle("Blueberry N:P") + theme_classic()
+
+b5 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_CP_CVar)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Blueberry C:P CV") + ggtitle("Blueberry C:P") + theme_classic()
+
+btot <- b1 + b2 + b3 + b4 + b5 + plot_annotation(title = "Stoichiometry CV and Mean home range overlap (BA)") + plot_layout(guides = "collect")
+
+btot
+```
+
+<!-- ### Line Plots of Stoichiometric Ratios values against Cumulative Home Range Area {.tabset .tabset-fade .tabset-pills} -->
+
+<!-- In this section, we visualize the change in resource stoichiometry as the kUD  -->
+<!-- increases, for each of our snowshoe hares. Note that we use standardized values  -->
+<!-- of resource stoichiometry.  -->
+
+<!-- First, we estimate cumulative kUDs area size estimates for each snowshoe hares.  -->
+<!-- We begin at 50% kUD and expand each successive estimate by 5%, until we reach  -->
+<!-- the 90% isopleth. We then extract the mean values of each stoichiometric ratio -->
+<!-- for each of the cumulative area estimates.  -->
+
+```{r stoichHR-cumulativeAreaplots, eval=FALSE, include=FALSE, tidy=TRUE}
+percents <- as.vector(seq(50, 90, 5))
+
+temp.HRa <- list()
+
+for (i in 1:length(homeRanges)) {
+  temp.HR <- homeRanges[[i]]
+  
+  temp.HRa <- lapply(1:length(percents), function(x) SpatialPolygonsDataFrame.UD(temp.HR, level.UD=percents[x]))
+  
+}
+
+
+
+
+# allocate empty dataframe to temporarily store cumulative kUD and means for
+# each collar
+temp.cumES <- st_sf(id = character(), area = numeric(),
+                    # ACRU_CN = numeric(), ACRU_NP = numeric(),
+                    VAAN_CN = numeric(), VAAN_CP = numeric(),
+                    VAAN_NP = numeric(), geometry = list(),
+                    crs = "+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m +no_defs")
+
+# allocate empty dataframe to store cumulative kUD and means for each collar
+hares.cumES <- st_sf(id = character(), area = numeric(),
+                     # ACRU_CN = numeric(), ACRU_NP = numeric(),
+                     VAAN_CN = numeric(), VAAN_CP = numeric(),
+                     VAAN_NP = numeric(), geometry = list(),
+                     crs = "+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m +no_defs")
+
+for (i in 1:length(UniqCIDs.bl)) {
+    temp.sp <- hares.triangd[hares.triangd$Frequency == UniqCIDs.bl[i], ]
+    # calculates kUD for each hare, one at the time
+    temp.kUD <- kernelUD(temp.sp[, 8], h = "href", grid = 1000, extent = 1, same4all = FALSE)
+    
+    for (j in 1:length(percents)) {
+       # extracts vertices from temp.kUD
+       temp.kUDhr <- getverticeshr(temp.kUD, percent = percents[j]) 
+        
+       # transform CRS of temp.kUDhr to that of stoich_stack
+       temp.kUDhr <- spTransform(temp.kUDhr, CRSobj = crs(stoich_stack))     
+       
+       temp.stoich <- raster::extract(stoich_stack, temp.kUDhr, 
+                                      method = "simple", 
+                                      weights = TRUE, df = TRUE, 
+                                      small = TRUE,
+                                      normalizeWeights = TRUE, 
+                                      cellnumbers = TRUE, fun = mean,
+                                      na.rm=TRUE, 
+                                      sp = TRUE)
+       # browser()
+       temp.stoich.sf <- st_as_sf(temp.stoich)
+       
+       temp.cumES <- rbind(temp.cumES, temp.stoich.sf)
+       # print(j)
+       # browser()
+    }
+    
+    hares.cumES <- rbind(hares.cumES, temp.cumES)
+    
+    temp.cumES <- temp.cumES[NULL, ]
+    
+    # browser()
+    
+    print(i)
+}
+```
+
+<!-- We then use the 90% MCP estimated earlier to extract the stoichiometric ratios  -->
+<!-- values from the raster stack of StDMs predictions. -->
+```{r bl-mean-ratios, eval=FALSE, warning=FALSE, include=FALSE, tidy=TRUE}
+bl.all.stoich <-raster::extract(stoich_stack, bl.mcp.all, 
+                                method = "simple", 
+                                weights = TRUE, df = TRUE,
+                                small = TRUE,
+                                normalizeWeights = TRUE,
+                                cellnumbers = TRUE)
+
+bl.stoich <- summarise_at(bl.all.stoich, .vars = c("ACRU_CN", "ACRU_NP", 
+                                    "VAAN_CN", "VAAN_CP", "VAAN_NP"), 
+                          .funs = list(~mean(., na.rm = TRUE), 
+                                       ~sd(., na.rm = TRUE))) 
+
+# The following code is just for visualization purposes in the R notebook
+bl.stoich.lm <- bl.stoich[, 1:5] %>% pivot_longer(., cols = everything(), names_to = "Species", values_to = "Mean") %>% separate(Species, into = c("Species", "Ratio", "Statistic"), sep = "_") %>% dplyr::select(., -Statistic)
+
+bl.stoich.lsd <- bl.stoich[, 6:10] %>% pivot_longer(., cols = everything(), names_to = "Species", values_to = "SD") %>% separate(Species, into = c("Species", "Ratio", "Statistic"), sep = "_") %>% dplyr::select(., -Statistic)
+
+bl.stoich.vis <- bind_cols(bl.stoich.lm, bl.stoich.lsd) %>% dplyr::select(., -c(4,5)) %>% dplyr::rename(., Species = Species...1, Ratio = Ratio...2)
+
+kable(bl.stoich.vis) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"), fixed_thead = TRUE) %>% scroll_box(width = "100%")
+```
+
+<!-- Now, we standardize the values extracted from each home range against the mean  -->
+<!-- and SD values just calculated.  -->
+```{r stoich-standard, eval=FALSE, include=FALSE}
+hares.cumES$ACRU_CN_std <- (hares.cumES$ACRU_CN - bl.stoich$ACRU_CN_mean)/bl.stoich$ACRU_CN_sd
+
+hares.cumES$ACRU_NP_std <- (hares.cumES$ACRU_NP - bl.stoich$ACRU_NP_mean)/bl.stoich$ACRU_NP_sd
+
+hares.cumES$VAAN_CN_std <- (hares.cumES$VAAN_CN - bl.stoich$VAAN_CN_mean)/bl.stoich$VAAN_CN_sd
+
+hares.cumES$VAAN_CP_std <- (hares.cumES$VAAN_CP - bl.stoich$VAAN_CP_mean)/bl.stoich$VAAN_CP_sd
+
+hares.cumES$VAAN_NP_std <- (hares.cumES$VAAN_NP - bl.stoich$VAAN_NP_mean)/bl.stoich$VAAN_NP_sd
+```
+
+<!-- Here are the plots showing the linear increase in standardized stoichiometric  -->
+<!-- values with cumulative kUD area estimates.  -->
+
+<!-- #### C:N Ratio -->
+
+```{r acruCN-lineplot, eval=FALSE, include=FALSE, tidy=TRUE}
+ggplot(data = hares.cumES, aes(x = area, y = ACRU_CN_std)) + 
+  geom_line() + 
+  ggtitle("Red Maple") + 
+  xlab("Home Range area (ha)") + 
+  ylab("C:N Ratio (standardized)") + 
+  theme_clean() +
+  facet_wrap(.~id, scales = "free_x")
+```
+
+```{r vaanCN-lineplot, eval=FALSE, include=FALSE, tidy=TRUE}
+ggplot(data = hares.cumES, aes(x = area, y = VAAN_CN_std)) + 
+  geom_line() + 
+  ggtitle("Blueberry") + 
+  xlab("Home Range area (ha)") + 
+  ylab("C:N Ratio (standardized)") + 
+  theme_clean() +
+  facet_wrap(.~id, scales = "free_x")
+```
+
+<!-- #### C:P Ratio -->
+
+```{r vaanCP-lineplot, eval=FALSE, include=FALSE, tidy=TRUE}
+ggplot(data = hares.cumES, aes(x = area, y = VAAN_CP_std)) + 
+  geom_line() + 
+  ggtitle("Blueberry") + 
+  xlab("Home Range area (ha)") + 
+  ylab("C:P Ratio (standardized)") + 
+  theme_clean() +
+  facet_wrap(.~id, scales = "free_x")
+```
+
+<!-- #### N:P Ratio -->
+```{r acruNP-lineplot, eval=FALSE, include=FALSE, tidy=TRUE}
+ggplot(data = hares.cumES, aes(x = area, y = ACRU_NP_std)) + 
+  geom_line() + 
+  ggtitle("Red Maple") + 
+  xlab("Home Range area (ha)") + 
+  ylab("N:P Ratio (standardized)") + 
+  theme_clean() +
+  facet_wrap(.~id, scales = "free_x")
+```
+
+```{r vaanNP-lineplot, eval=FALSE, include=FALSE, tidy=TRUE}
+ggplot(data = hares.cumES, aes(x = area, y = VAAN_NP_std)) + 
+  geom_line() + 
+  ggtitle("Blueberry") + 
+  xlab("Home Range area (ha)") + 
+  ylab("N:P Ratio (standardized)") + 
+  theme_clean() +
+  facet_wrap(.~id, scales = "free_x")
+```
+
+
+### Kernel Utilization Distributions
+
+Here we present kUD estimates for the home range of each of our snowshoe hares, 
+drawing both the 50% ("core area"), 75%, and 90% isopleths on top of a 
+heat map of the whole Utilization Distribution.
+
+> **CODE BELOW WORKS BUT NOT THE BEST TO SHOW THIS**
+
+```{r akde-maps, echo=TRUE, tidy=TRUE}
+
+# setup hare points
+hares.points <- hares.triangd %>% dplyr::select(., -COVt.x.y, -COV.x.x, -COV.y.y, -pid.x, -pid.y, -id.x, -id.y, -cpid) %>% dplyr:: rename(., CollarFrequency = indiv, Easting = long, Northing = lat)
+
+coordinates(hares.points) <- c("Easting", "Northing")
+proj4string(hares.points) <- CRS("+init=epsg:4326")
+
+# setup grid points
+bl_grid_pts <- bl_grid_points %>% dplyr::select(SiteName,TrapName)
+
+bl_grid_points <- st_transform(bl_grid_pts, st_crs(hares.points))
+
+# convert hare.points to sf
+hares.points <- st_as_sf(hares.points)
+
+# extract the UD contours at 50%, 75%, and 90% isopleths
+homeRanges.50 <- lapply(1:length(homeRanges), function(x) SpatialPolygonsDataFrame.UD(homeRanges[[x]], level.UD=0.50, level = 0.95))
+homeRanges.75 <- lapply(1:length(homeRanges), function(x) SpatialPolygonsDataFrame.UD(homeRanges[[x]], level.UD=0.75, level = 0.95))
+homeRanges.90 <- lapply(1:length(homeRanges), function(x) SpatialPolygonsDataFrame.UD(homeRanges[[x]], level.UD=0.90, level = 0.95))
+
+
+# create a palette for these lines
+aKDE.pal <- c("#ef3b2c", "#fb6a4a", "#fc9272")
+
+# create index vector for loop 
+loopCIDs <- names(homeRanges)
+
+# loop to produce the maps
+
+for (i in 1:length(loopCIDs)) {
+  
+  # add in ICR estimates
+  aKDEpoly.50 <- homeRanges.50[[i]]
+  aKDEpoly.75 <- homeRanges.75[[i]]
+  aKDEpoly.90 <- homeRanges.90[[i]]
+   
+  # remove unnecessary polygons and rows
+  aKDEpoly.50@polygons[c(1,3)] <- NULL
+  aKDEpoly.50@data$name[c(1,3)] <- NA
+  aKDEpoly.50@data <- drop_na(aKDEpoly.50@data)
+  aKDEpoly.50@data$id <- "50%"
+  
+  aKDEpoly.75@polygons[c(1,3)] <- NULL
+  aKDEpoly.75@data$name[c(1,3)] <- NA
+  aKDEpoly.75@data <- drop_na(aKDEpoly.75@data)
+  aKDEpoly.75@data$id <- "75%"
+ 
+  aKDEpoly.90@polygons[c(1,3)] <- NULL
+  aKDEpoly.90@data$name[c(1,3)] <- NA
+  aKDEpoly.90@data <- drop_na(aKDEpoly.90@data)
+  aKDEpoly.90@data$id <- "90%"
+
+  # rbind ICR's estimates into a single SPDF
+  aKDE.temp <- rbind(aKDEpoly.50, aKDEpoly.75, aKDEpoly.90)
+  
+  # convert ICR estimates to SpatialLinesDataFrame
+  aKDE.lines.temp <- as(aKDE.temp, "SpatialLinesDataFrame")
+  
+  # convert ICR and MR home range contour lines to sf objects
+  aKDEsf.temp <- st_as_sf(aKDE.lines.temp)
+  
+  # create a buonding box that update for each collar
+  bbox_temp <- st_bbox(aKDEsf.temp) # current bounding box
+  
+  xrange <- bbox_temp$xmax - bbox_temp$xmin # range of x values
+  yrange <- bbox_temp$ymax - bbox_temp$ymin # range of y values
+  
+  bbox_temp[1] <- bbox_temp[1] - (0.25 * xrange) # xmin - left
+  bbox_temp[3] <- bbox_temp[3] + (0.25 * xrange) # xmax - right
+  bbox_temp[2] <- bbox_temp[2] - (0.25 * yrange) # ymin - bottom
+  bbox_temp[4] <- bbox_temp[4] + (0.25 * yrange) # ymax - top
+  
+  bbox_temp <- bbox_temp %>%  # take the bounding box ...
+    st_as_sfc() # ... and make it a sf polygon
+  
+  # add in triangulation points
+  points.temp <- dplyr::filter(hares.points, CollarFrequency == loopCIDs[i])
+  
+  # create a map using tmap and store it in its own slots in the list created
+  # above
+  aKDE.maps[[i]] <- 
+    tm_shape(vaancnclip, bbox = bbox_temp, raster.downsample = FALSE) + 
+    tm_raster(style = "pretty", palette = "-PRGn", 
+              legend.show = TRUE, title = "Blueberry C:N") + 
+    tm_shape(bl_grid_pts) + 
+    tm_dots(size = 0.3, shape = 18, col = "red", alpha = 0.3) + # grid trap locs
+    tm_shape(points.temp)
+    tm_shape(icrSf.temp) + 
+    tm_lines(col = "id", palette = red.pal, title.col = "% kUD -- ICR", lwd = 2) +
+    tm_compass(position = c("right", "top")) +
+    tm_scale_bar(width = 0.3, 
+                 text.size = 1.25,
+                 position = c("right", "bottom")) + 
+    tm_layout(main.title = paste("Collar Frequency:", loopCIDs[i]),
+              # title = paste("Ear tag:", dots.temp$EarTag),
+              legend.outside = TRUE, 
+              legend.outside.position = "right",
+              legend.text.size = 1.1,
+              legend.title.size = 1.25,
+              asp = 1,
+              frame = TRUE)
+  
+  # Sys.sleep(1)
+  # browser()
+  
+  # print(hares.kUD.maps[[i]])
+  
+  # browser()
+}
+
+# arrange maps into a single visualization
+ICRvMRmaps <- tmap_arrange(ICRvMR.kUD.maps)
+
+
+```
+
+
+```{r}
+# create and export RasterBrick
+# in the case of coarse grids, the value of PDF in a grid cell corresponds to the average probability density over the entire rectangular cell.
+# PDF: probability density function, which is >=0 and integrates to 1. Its values are continuous probability densities for the point location
+# akde does not re-normalize the density estimate - which is why it does not sum to 1 when calculating PDF
+# error = 0.001 in akde() targets error in probability mass to be less than error argument, so the integration
+# of probability mass within cells should be more accurate
+# use probability density function - higher values correspond to more intense space use (note: NOT normalized to 1)
+r <- lapply(1:length(homeRanges), function(x) ctmm::raster(homeRanges[[x]], filename= names(homeRanges), DF="PDF"))
+names(r) <- names(hares.telem.clean)
+# save list of rasters - easier to work with in 5-HomeRangeExtraction.R
+saveRDS(r, "../Results/akderasters.rds")
+# load grid points
+bl_grid_pts <- sf::st_transform(bl_grid_points, "+init=epsg:32622")
+
+# load home range area rasters - in a list (95% home range area in hectares)
+kernel95 <- readRDS("../Results/akderasters.rds")
+# normalize rasters so they are between 0,1
+kernel95norm <- lapply(kernel95, spatialEco::raster.transformation)
+# check that they are the same spatially
+image(kernel95norm[[1]])
+image(kernel95[[1]])
+# create raster stack so extraction is possible
+kernel95stack <- stack(kernel95norm)
+names(kernel95stack) <- names(kernel95)
+#### Home Ranges --------
+# use clamp to transform any values under 0.15 to Nas
+kernel95normz <- lapply(kernel95norm, function(i) raster::clamp(i, lower=0.15, useValues=FALSE))
+# save clamped raster
+saveRDS(kernel95normz, "../Results/rasternormclamp.rds")
+clam <- readRDS("../Results/rasternormclamp.rds")
+# stack clamped rasters and merge them - can see individuals when plotted 
+clams <- raster::stack(clam)
+kernel95normm <- raster::merge(clams)
+# stack original raster list and overlay, summing values where there 
+# is more than one raster - shows collective when plotted
+kernel95norms <- raster::stack(kernel95norm)
+over <- raster::overlay(kernel95norms, fun=sum)
+# # read in complexity sampling points
+# bl_cs_pts <- read_sf("input/Mapping", layer = "cs_points")
+# bl_cs_pts <- sf::st_transform(bl_cs_pts, "+init=epsg:32622")
+# # read in trap sampling points
+# bl_grid_pts <- read_sf("input/Mapping", layer = "bl_grid_points")
+# bl_grid_pts <- sf::st_transform(bl_grid_pts, "+init=epsg:32622")
+# set extent to include all home ranges but not be too large
+e <- raster::extent(278000,280000,5359000,5360500)
+# plot merged data - individuals 
+t <- tm_shape(kernel95normm, bbox=e)+
+  tm_raster(title = "kUD", style = "cont", 
+            palette = "-RdYlBu", alpha=0.9)+
+  tm_scale_bar()+
+  tm_xlab("Easting")+
+  tm_ylab("Northing")+
+  tm_shape(bl_grid_pts)+
+  tm_dots(size = 0.15, shape = 4)+
+  tm_legend()+
+  tm_layout(legend.bg.color = "white")
+t
+tmap_save(t, "graphics/kUD_raster_grids.png")
+```
+
+
+<!-- ## 50% kUD Overlap visualization -->
+
+<!-- The map below allows visualization of the home ranges from the three years of -->
+<!-- study and their overlap in an interactive way. We plot the home ranges on a -->
+<!-- StDM raster of C:N for blueberry, but other options are available by re the code chunk. -->
+```{r kUD-overlap-50, eval=FALSE, include=FALSE, tidy=TRUE}
+# Create a bounding box
+bbox_bldots <- st_bbox(hares.triangd.LG) # current bounding box
+
+xrange <- bbox_bldots$xmax - bbox_bldots$xmin # range of x values
+yrange <- bbox_bldots$ymax - bbox_bldots$ymin # range of y values
+
+bbox_bldots[1] <- bbox_bldots[1] - (0.05 * xrange) # xmin - left
+bbox_bldots[3] <- bbox_bldots[3] + (0.05 * xrange) # xmax - right
+bbox_bldots[2] <- bbox_bldots[2] - (0.05 * yrange) # ymin - bottom
+bbox_bldots[4] <- bbox_bldots[4] + (0.05 * yrange) # ymax - top
+
+bbox_bldots <- bbox_bldots %>%  # take the bounding box ...
+      st_as_sfc() # ... and make it a sf polygon
+
+# add to each kUD its eartag and year of sampling
+
+for (i in 1:length(hares.kUD)) {
+  hares.kUDhr.50@data[["eartag"]][i] <- as.character(hare.stoich$EarTag[i])
+  hares.kUDhr.50@data[["year"]][i] <- as.character(hare.stoich$SamplingYear[i])
+}
+
+hares.kUDhr.50@data[["eartag"]] <- as.factor(hares.kUDhr.50@data[["eartag"]])
+
+hares.kUDhr.50@data[["year"]] <- as.factor(hares.kUDhr.50@data[["year"]])
+
+
+kUD50overlap_map <- tm_shape(vaanCN, bbox = bbox_bldots, name = "Blueberry C:N") +
+  tm_raster(style = "cont", palette = "-PRGn", legend.show = TRUE, title = "Blueberry C:N") +
+  # tm_shape(vaanCP, bbox = bbox_bldots) +
+  # tm_raster(style = "cont", palette = "-PRGn", legend.show = TRUE, title = "Blueberry C:P") +
+  # tm_shape(vaanNP, bbox = bbox_bldots) +
+  # tm_raster(style = "cont", palette = "-PRGn", legend.show = TRUE, title = "Blueberry N:P") +
+  # tm_shape(acruCN, bbox = bbox_bldots) +
+  # tm_raster(style = "cont", palette = "-PRGn", legend.show = TRUE, title = "Red Maple C:N") +
+  #   tm_shape(acruNP, bbox = bbox_bldots) +
+  # tm_raster(style = "cont", palette = "-PRGn", legend.show = TRUE, title = "Red Maple N:P") +
+      tm_shape(bl_grid_pts, is.master = T,
+                                     name = "Trap Locations") +
+  tm_dots(size = 0.1, col = "red") +
+     tm_shape(hares.kUDhr.50, name = "Snowshow hare 50% kUD") +
+     tm_polygons(col = "id", alpha = 0.7, style = "fixed", title = "Collar Frequency") +
+     tm_compass(position = c("left", "top"), text.size = 0.8) +
+     tm_scale_bar(text.size = 0.8,
+                  position = c("right", "bottom")) +
+     tm_layout(legend.outside = TRUE,
+               legend.outside.position = "right",
+               asp = 1,
+               frame = TRUE,
+               title = "Snowshoe hare 50% kUD") +
+  tmap_options(max.categories = 34) + tm_facets(by = "eartag", as.layers = TRUE)
+
+tmap_mode(mode = "view")
+
+kUD50overlap_map
+
+# tmap_save(filename = "OL_interactiveMap.html")
+```
+
+
+
+```{r kUD-visual, eval=FALSE, include=FALSE, tidy=TRUE}
+# the following custom function gets the estimated percent contours of a kernel UD
+# Taken from: https://mgritts.github.io/2016/06/01/visualize-utilization-distribution/
+getContours <- function(ud, pct) {
+  ids <- as.character(pct)
+  x <- getvolumeUD(ud)
+  xyma <- coordinates(x)
+  xyl <- list(x = unique(xyma[, 1]), y = unique(xyma[, 2]))
+  z <- as.image.SpatialGridDataFrame(x[, 1])$z
+  
+  cl <- lapply(pct, function(x) {
+    contourLines(x = xyl$x, y = xyl$y, z, nlevels = 1, levels = x)
+  })
+  
+  plys <- lapply(seq_along(cl), function(i) {
+    Polygons(lapply(seq_along(cl[[i]]), function(j) {
+      m <- cl[[i]][[j]]
+      ply <- cbind(m$x, m$y)
+      ply <- rbind(ply, ply[1, ])
+      Polygon(ply)
+    }), ID = ids[i])
+  })
+  
+  plys <- lapply(plys, function(x) checkPolygonsHoles(x))
+  splys <- SpatialPolygons(plys)
+  dff <- data.frame(id = ids)
+  row.names(dff) <- ids
+  spdf <- SpatialPolygonsDataFrame(splys, dff)
+  return(spdf)
+}
+
+# extract volume of kUDs to plot later underneath the isopleths
+hares.vol <- getvolumeUD(hares.kUD)
+
+# get 50% and 90% contours from kUD of each hare
+hares.kUD.contour <- lapply(hares.kUD, function(x) getContours(x, pct = c(50, 75, 90)))
+
+# allocate empty list to store tmap objects for each map created below
+hares.kUD.maps <- vector("list", length(UniqCIDs.bl))
+
+# sort the unique identifiers 
+UniqCIDs.bl <- sort(UniqCIDs.bl)
+
+# create a grey scale palette for isopleths, black for 50%, dark gray for 75% and light grey 
+# for 90%
+grey.pal <- c("#000000", "#4c4c4c", "#a6a6a6") 
+
+# loop to produce a map for each hare showing a heatmap of the kUD and the 
+# 50% and 90% isopleths
+for (i in 1:length(UniqCIDs.bl)) {
+    # store contours for the current collar in a temporary linear object
+    lines.temp <- as(hares.kUD.contour[[i]], "SpatialLinesDataFrame") 
+    
+    # add a crs to the temporary linear object
+    crs(lines.temp) <- crs(hares.triangd) 
+    
+    bbox_temp <- st_bbox(lines.temp) # current bounding box
+    
+    xrange <- bbox_temp$xmax - bbox_temp$xmin # range of x values
+    yrange <- bbox_temp$ymax - bbox_temp$ymin # range of y values
+    
+    bbox_temp[1] <- bbox_temp[1] - (0.25 * xrange) # xmin - left
+    bbox_temp[3] <- bbox_temp[3] + (0.25 * xrange) # xmax - right
+    bbox_temp[2] <- bbox_temp[2] - (0.25 * yrange) # ymin - bottom
+    bbox_temp[4] <- bbox_temp[4] + (0.25 * yrange) # ymax - top
+    
+    bbox_temp <- bbox_temp %>%  # take the bounding box ...
+      st_as_sfc() # ... and make it a sf polygon
+    
+    # create a map using tmap and store it in its own slots in the list created
+    # above
+    hares.kUD.maps[[i]] <- tm_shape(hares.vol[[i]], bbox = bbox_temp) + 
+      tm_raster(palette = "-YlOrRd", n = 10) + 
+      tm_shape(lines.temp, unit = "km") + 
+      tm_lines(col = "id", palette = grey.pal, title.col = "% kUD", lwd = 2) +
+      tm_compass(position = c("right", "top")) +
+      tm_scale_bar(width = 0.3, 
+                   text.size = 1.25,
+                   position = c("right", "bottom")) + 
+      tm_layout(main.title = paste("Collar Frequency:", UniqCIDs.bl[i]),
+                # title = paste("Ear tag:", dots.temp$EarTag),
+                legend.outside = TRUE, 
+                legend.outside.position = "right",
+                legend.text.size = 1.1,
+                legend.title.size = 1.5,
+                asp = 1,
+                frame = FALSE)
+    
+    # Sys.sleep(1)
+    # browser()
+    
+    print(hares.kUD.maps[[i]])
+    
+    rm(lines.temp) # remove the temp linear object to avoid errors
+}
+
+# arrange and print the maps
+# kUDmaps <- tmap_arrange(hares.kUD.maps, ncol = 7, nrow = 4)
+# kUDmaps
+
+# tmap_save(hares.kUD.maps[[i]], filename = "../Results/kUDsSelection_example.png", dpi = 300)
+```
+
+### StDM Predictions Maps
+Here we plot the predictions of ratios values for C:N, C:P, and N:P produced 
+using Stoichiometric Distribution Models [@Leroux2017]. We used these 
+predictions in the analyses above as estimates of the quality of plant food 
+resources in the home ranges of our collared snowshoe hares. Note that here we
+only present a map of the StDM predictions for blueberry C:N. If you would like
+to see maps for blueberry C:P, N:P, and red maple C:N, N:P predictions, re-knit
+this notebook after un-commenting the relevant lines of code in the chunk below.
+
+```{r raster-Maps, echo=TRUE, warning=FALSE, tidy=TRUE}
+# Load a base map of the island of Newfoundland
+nl_coastline <- read_sf(dsn = "../Data/Mapping/", layer = "NL_Dissolve1")
+
+# Simplify the geometry of the coastline, simplifying the lines by removing 
+# vertices, while preserving the topology
+# This step should improve runtime of this section of the notebook
+nlcoast<- ms_simplify(nl_coastline)
+
+# Apply the same projection as the StDMs raster layers to shapefiles we will use
+bl_all <- st_transform(bl.mcp.all, crs = st_crs(vaanNP))
+
+nlcoastsf <- st_as_sf(nlcoast, crs = st_crs(vaanNP))
+
+# Create a bounding box for the study area, to show in the inset reference map
+st_bbox(bl_all)
+
+bl.study.area <- st_bbox(c(xmin = 860700, xmax = 862700, 
+                           ymin = 5383500, ymax = 5385600), 
+                         crs = st_crs(vaanNP)) %>% st_as_sfc()
+
+bl.study.area <- st_bbox(bl_all) # current bounding box
+
+xrange <- bl.study.area$xmax - bl.study.area$xmin # range of x values
+yrange <- bl.study.area$ymax - bl.study.area$ymin # range of y values
+    
+bl.study.area[1] <- bl.study.area[1] - (0.25 * xrange) # xmin - left
+bl.study.area[3] <- bl.study.area[3] + (0.25 * xrange) # xmax - right
+bl.study.area[2] <- bl.study.area[2] - (0.25 * yrange) # ymin - bottom
+bl.study.area[4] <- bl.study.area[4] + (0.25 * yrange) # ymax - top
+    
+bl.study.area <- bl.study.area %>%  # take the bounding box ...
+  st_as_sfc() # ... and make it a sf polygon
+
+# Mapping the raster underneath the grid and the 100% MCP
+vaanCNmap <- tm_shape(vaanCN, bbox = bl.study.area) + 
+  tm_raster(style = "cont", palette = "-PRGn", 
+            legend.show = TRUE, title = "Blueberry C:N") + 
+  # tm_shape(vaanCP, bbox = bl.study.area) + 
+  # tm_raster(style = "cont", palette = "-PiYG", 
+  #           legend.show = TRUE, title = "Blueberry C:P") + 
+  # tm_shape(vaanNP, bbox = bl.study.area) + 
+  # tm_raster(style = "cont", palette = "-BrBG", 
+  #           legend.show = TRUE, title = "Blueberry N:P") + 
+  # tm_shape(acruCN, bbox = bl.study.area) + 
+  # tm_raster(style = "cont", palette = "-PRGn", 
+  #           legend.show = TRUE, title = "Red Maple C:N") + 
+  #  tm_shape(acruNP, bbox = bl.study.area) + 
+  # tm_raster(style = "cont", palette = "-BrBG", 
+  #           legend.show = TRUE, title = "Red Maple C:N") + 
+  # tmap_options(max.raster = c(plot = 11308939, view = 11308939)) + 
+  tm_shape(bl_grid_points) + tm_dots(size = 0.3, col = "red", alpha = 0.3) + 
+  tm_shape(bl_all) + tm_polygons(alpha = 0, lty = 2, lwd = 5, 
+                                 border.col = "red") + 
+  # tm_compass(position = c("right", "top")) + tm_scale_bar() + 
+  tm_layout(legend.outside = TRUE, 
+            legend.outside.position = "right")
+
+# Mapping a reference map to include as an inset in the main map
+# nl_map <- tm_shape(nlcoast)+ tm_polygons() + tm_shape(bl.study.area) + tm_polygons(col = "red", border.col = "red", lwd = 10)
+
+# visualize
+# tmap_mode("view")
+vaanCNmap
+
+# Save statement
+# tmap_save(vaanCNmap, insets_tm = nl_map, insets_vp = viewport(x = .75, y = .166, width = 0.3, height = 0.3), height = 10, width = 18, filename = "../Results/BL_VaanCN.png", dpi = 300)
+```
+
+
+<!-- ## Map of triangulation dots with/without StDMs predictions -->
+<!-- For visualization purposes only, create a map of all the triangulation points -->
+<!-- from the three year of telemetry sampling, and then a copy of it overlaid on -->
+<!-- the StDM raster prediction for Blueberry C:N with -->
+
+```{r dots-maps, eval=FALSE, include=FALSE, tidy=TRUE}
+# Create a bounding box
+bbox_bldots <- st_bbox(hares.triangd.LG) # current bounding box
+    
+xrange <- bbox_bldots$xmax - bbox_bldots$xmin # range of x values
+yrange <- bbox_bldots$ymax - bbox_bldots$ymin # range of y values
+    
+bbox_bldots[1] <- bbox_bldots[1] - (0.05 * xrange) # xmin - left
+bbox_bldots[3] <- bbox_bldots[3] + (0.05 * xrange) # xmax - right
+bbox_bldots[2] <- bbox_bldots[2] - (0.05 * yrange) # ymin - bottom
+bbox_bldots[4] <- bbox_bldots[4] + (0.05 * yrange) # ymax - top
+    
+bbox_bldots <- bbox_bldots %>%  # take the bounding box ...
+      st_as_sfc() # ... and make it a sf polygon
+    
+# save the number of levels in Date for later plotting
+col.lvls <- nlevels(as.factor(hares.triangd.LG$EarTag)) 
+
+
+bl_dotsmap <- tm_shape(forest_clip) + 
+     tm_borders(col = "grey") + 
+     tm_shape(bl_grid_pts) + tm_dots(size = 0.3, 
+                                     shape = 3, col = "red") +
+     tm_shape(hares.triangd.LG, bbox = bbox_bldots) + 
+     tm_dots(size = 0.5, col = "EarTag", shape = "Year",
+             palette = "PuOr", 
+             border.col = "grey") + 
+     tm_compass(position = c("left", "top"), text.size = 1) +
+     tm_scale_bar(text.size = 0.8,
+                  position = c("right", "bottom")) + 
+     tm_layout(legend.outside = TRUE, 
+               legend.outside.position = "bottom",
+               legend.text.size = 1.1,
+               legend.title.size = 1.5,
+               asp = 1,
+               frame = FALSE) +
+     tmap_options(max.categories = col.lvls)
+
+# tmap_save(bl_dotsmap, insets_tm = nl_map, insets_vp = viewport(x = .9, y = .166, width = 0.3, height = 0.3), height = 8, width = 12, filename = "../Results/BL_dotsmap.png", dpi = 300)
+
+
+# pseudorep1 <- hares.triangd.LG[hares.triangd.LG$EarTag == "A3769",]
+# pseudorep2 <- hares.triangd.LG[hares.triangd.LG$EarTag == "A1698",]
+# 
+# pseudorep <- merge(pseudorep1,pseudorep2)
+
+bl_dotsvaanCNmap <- tm_shape(forest_clip) + 
+     tm_borders(col = "grey") +
+  tm_shape(vaanCN, bbox = bbox_bldots) + 
+  tm_raster(style = "cont", palette = "-PRGn", legend.show = TRUE, title = "Blueberry C:N") +
+      tm_shape(bl_grid_pts) + tm_dots(size = 0.1, 
+                                     shape = 3, col = "red") +
+     tm_shape(hares.triangd.LG, bbox = bbox_bldots) + 
+     tm_dots(size = 0.1, col = "EarTag", shape = 21,
+             palette = pair_colors, 
+             border.col = "black") + 
+     tm_compass(position = c("left", "top"), text.size = 0.8) +
+     tm_scale_bar(text.size = 0.8,
+                  position = c("right", "bottom")) + 
+     tm_layout(legend.outside = TRUE, 
+               legend.outside.position = "right",
+               legend.text.size = 1.1,
+               legend.title.size = 1.5,
+               asp = 1,
+               frame = TRUE) +
+     tm_facets(by = "Year", nrow = 1, free.coords = F, drop.empty.facets = FALSE) +
+     tmap_options(max.categories = col.lvls)
+
+tmap_mode("plot")
+bl_dotsvaanCNmap
+# tmap_save(bl_dotsvaanCNmap, filename = "../Results/BL_dotsvaanCNmap.png", dpi = 300)
+```
+
+### Map of Study Area
+
+```{r study-area-map-prep, echo=TRUE, tidy=TRUE}
+# convert SiteName in the grid points shp file to a factor
+grid_points_all$SiteName <- as.factor(grid_points_all$SiteName) 
+
+# create color-blind safe palette
+starea_palette <- c("#e28dbe", "#4d9221", "#4d9221", "#4d9221")
+
+# Load a base map of the island of Newfoundland
+nl_coastline <- read_sf(dsn = "../Data/Mapping/", layer = "NL_Dissolve1")
+
+# load a base map of canada
+canada <- read_sf(dsn = "../Data/Mapping/gpr_000b11a_e", layer = "gpr_000b11a_e")
+
+# select only columns with names containing UTF-8 characters
+canada <- canada[, c(1,3,5)]
+
+# simplify the shapefile
+canada_s <- ms_simplify(canada, keep = 0.001)
+
+# make sure the shp file conforms to tmap requirements
+canada_s <- st_make_valid(canada_s)
+
+canada_s$PRUID <- as.factor(canada_s$PRUID)
+
+# create coloring vectors for later
+starea_col <- nrow(canada_s)
+  
+starea_col[c(2:13)] <- "white"
+starea_col[1] <- "gray75"
+
+# set crs for canada
+canada_s <- st_transform(canada_s, st_crs(bl_grid_points))
+
+
+# Simplify the geometry of the coastline, simplifying the lines by removing 
+# vertices, while preserving the topology
+# This step should improve runtime of this section of the notebook
+nlcoast<- ms_simplify(nl_coastline)
+
+nlcoastsf <- st_as_sf(nlcoast, crs = st_crs(na_coastline))
+
+nl_sf <- st_transform(nlcoastsf, crs = st_crs(bl_grid_points))
+
+# Create a bounding box for the study area, to show in the inset reference map
+st_bbox(grid_points_all)
+
+study.area <- st_bbox(c(xmin = 442963.0, xmax = 454538.4, 
+                           ymin = 5358796.4, ymax = 5390664.8), 
+                         crs = st_crs(grid_points_all)) %>% st_as_sfc()
+
+study.area <- st_bbox(grid_points_all) # current bounding box
+
+xrange <- study.area$xmax - study.area$xmin # range of x values
+yrange <- study.area$ymax - study.area$ymin # range of y values
+
+study.area[1] <- study.area[1] - (0.25 * xrange) # xmin - left
+study.area[3] <- study.area[3] + (0.25 * xrange) # xmax - right
+study.area[2] <- study.area[2] - (0.25 * yrange) # ymin - bottom
+study.area[4] <- study.area[4] + (0.25 * yrange) # ymax - top
+
+study.area <- study.area %>%  # take the bounding box ...
+  st_as_sfc() # ... and make it a sf polygon
+
+```
+
+The interactive map below shows a snapshot of our study area, highlighted by the
+red line, with the relative position of our live-trapping, meandering transect
+shown by trap locations.
+
+```{r study-area-map, echo=TRUE, tidy=TRUE}
+# create the map of the study areas
+starea_map_int <- tm_shape(study.area, is.master = T) + 
+  tm_borders(col = "red", lwd = 5) + tm_shape(grid_points_all) +
+  tm_symbols(col = "SiteName", size = 1, palette = starea_palette, border.col = "black") +
+  tm_scale_bar(position = c("left", "bottom")) + 
+  tm_basemap(server = "OpenTopoMap")
+
+tmap_mode(mode = "view")
+starea_map_int
+```
+
+Conversely, here we show the code to produce the static map of the study area
+found in the Supplementary Information document. Note that we do not show the 
+output of this code chunk, as it is already available in the SI.
+```{r study-area-map-static, echo=TRUE, tidy=TRUE}
+# create map of canada with newfoundland highlighted
+canmap <- tm_shape(canada_s) + tm_polygons(col = "PRUID", palette = starea_col, alpha = 0.5) + tm_shape(study.area) + tm_symbols(col = "#e28dbe", border.col = "black", size = 0.5) + tm_layout(asp=1, inner.margins = c(0.01, 0.01, 0.01, 0.01), bg.color = NA, legend.show = F) 
+
+# create the map of the study areas
+starea_map <- tm_shape(nlcoast) + tm_borders() + tm_shape(grid_points_all) +
+  tm_symbols(col = "SiteName", size = 1, palette = starea_palette, border.col = "black") + 
+  tm_compass(position = c("right", "top"), size = 2, text.size = 2) + 
+  tm_scale_bar(position = c("left", "bottom"), text.size = 1.2) +
+  tm_layout(outer.margins = c(0.05, 0.01, 0.05, 0),
+            inner.margins = c(0.02, 0.3, 0.02, 0),
+            asp = 1.25,
+            legend.show = F)
+
+# starea_map
+# 
+# namap
+# print(canmap, grid::viewport(x = 0.202, y = 0.73, width = 0.45, height = 0.45))
+
+# save the map with inset
+vp <- viewport(x = 0.227, y = 0.7332, width = 0.45, height = 0.45)
+
+tmap_save(starea_map, insets_tm = canmap, insets_vp = vp, filename = "../Results/StudyAreaMap.pdf", dpi = 600)
+```
+
+
+# References
+
+<!-- The code below includes options to generate these custom lists for analyses that -->
+<!-- exclude data from 2017. -->
+
+<!-- ```{r aes-prep-no-2017, eval=FALSE, include=FALSE, tidy=TRUE} -->
+<!-- # IF ANALYSES EXCLUDED 2017 DATA, RUN THIS LINES OF CODE -->
+<!-- # Create a set of labels that only contains the ear tag labels for the  -->
+<!-- # individuals that had multiple years of triangulation -->
+<!-- cf_labs <- as.character(hare.stoich$EarTag) # store ear tag labels in a vector -->
+<!-- cf_labs[3:7] <- "" -->
+<!-- cf_labs[10:13] <- "" -->
+<!-- cf_labs[15:17] <- "" -->
+<!-- cf_labs[19:26] <- "" -->
+<!-- cf_labs[28:30] <- "" -->
+
+<!-- # create vectors to assign shapes to data points in graph -->
+<!-- pair_shapes <- rep(21, 30) -->
+<!-- names(pair_shapes) <- sort(hare.stoich$EarTag) -->
+<!-- pair_shapes[c(2, 3)] <- 22 -->
+<!-- pair_shapes[c(11, 12)] <- 23 -->
+<!-- pair_shapes[c(29, 30)] <- 24 -->
+
+<!-- # repeat but this time for colors -->
+<!-- colorCount <- length(hare.stoich$EarTag) -->
+<!-- pair_colors <- colorRampPalette(RColorBrewer::brewer.pal(8, "Set2"))(colorCount) -->
+<!-- names(pair_colors) <- sort(hare.stoich$EarTag) -->
+
+<!-- pair_colors[c(2, 3)] <- "#79B1D3" -->
+<!-- pair_colors[c(11, 12)] <- "#B89B74" -->
+<!-- pair_colors[c(29, 30)] <- "#FFFF99" -->
+<!-- ``` -->
+
+
+<!-- ### Home Range Overlap for Individuals surviving multiple years {.tabset .tabset-fade .tabset-pills} -->
+
+<!-- Within the sample of 30 snowshoe hare that we use in these analyses, some  -->
+<!-- survived multiple years. These include, sorted by `EarTag` number: -->
+<!-- ```{r hare-duplicates, echo=TRUE, tidy=TRUE} -->
+<!-- duphareData <- hareData[duplicated(hareData$EarTag) | duplicated(hareData$EarTag, fromLast = TRUE), ] -->
+
+<!-- duphareData[order(duphareData$EarTag),] %>% remove_rownames() %>%  -->
+<!--   dplyr::select(1:9, 12, 10:11, 14:16, 13) %>% kable(., "html") %>% -->
+<!--   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), -->
+<!--                 fixed_thead = TRUE) %>% -->
+<!--   scroll_box(width = "100%", height = "500px") -->
+<!-- ``` -->
+
+<!-- Here, we provide the code necessary to produce Figure S3-S6 in the Supplementary -->
+<!-- Information document. Note that we do not show the figures themselves. -->
+
+<!-- #### A1425 -->
+<!-- ```{r A1425-map, echo=TRUE, tidy=TRUE, results='hide'} -->
+<!--  # separate relocation points for A1425 from the main relocation dataset -->
+<!--   A1425_2018 <- subset(hares.triangd, hares.triangd$EarTag == "A1425" & hares.triangd$Frequency == "149.653")  -->
+<!--   A1425_2019 <- subset(hares.triangd, hares.triangd$EarTag == "A1425" & hares.triangd$Frequency == "150.173") -->
+
+<!--   # add column identifying the sampling year -->
+<!--   A1425_2018$Year <- "2018" -->
+<!--   A1425_2019$Year <- "2019" -->
+
+<!--   # bind the two datasets towgether and convert sampling year to a factor -->
+<!--   A1425 <- spRbind(A1425_2018, A1425_2019) -->
+<!--   A1425$Year <- as.factor(A1425$Year) -->
+<!--   A1425$Frequency <- as.factor(A1425$Frequency) -->
+
+<!--   # convert kUD polygons into lines to draw just the borders of 50% and 90% kUDs -->
+<!--   A1425_2018.lines <- as(hares.kUD.contour$`149.653`, "SpatialLinesDataFrame") -->
+<!--   A1425_2019.lines <- as(hares.kUD.contour$`150.173`, "SpatialLinesDataFrame") -->
+
+<!--   # set projection for lines -->
+<!--   A1425_2018.lines@proj4string <- A1425_2018@proj4string -->
+<!--   A1425_2019.lines@proj4string <- A1425_2019@proj4string -->
+
+<!--   # define temporary bbox -->
+<!--   bbox_temp <- st_bbox(A1425_2019.lines) # current bounding box -->
+
+<!--   xrange <- bbox_temp$xmax - bbox_temp$xmin # range of x values -->
+<!--   yrange <- bbox_temp$ymax - bbox_temp$ymin # range of y values -->
+
+<!--   bbox_temp[1] <- bbox_temp[1] - (0.25 * xrange) # xmin - left -->
+<!--   bbox_temp[3] <- bbox_temp[3] + (0.25 * xrange) # xmax - right -->
+<!--   bbox_temp[2] <- bbox_temp[2] - (0.25 * yrange) # ymin - bottom -->
+<!--   bbox_temp[4] <- bbox_temp[4] + (0.25 * yrange) # ymax - top -->
+
+<!--   bbox_temp <- bbox_temp %>%  # take the bounding box ... -->
+<!--       st_as_sfc() # ... and make it a sf polygon -->
+
+
+<!--   # mapping -->
+<!-- olapmap_A1425 <- tm_shape(forest_clip, bbox = bbox_temp) +  -->
+<!--   tm_borders(col = "grey") + # background FRI layer -->
+<!--   tm_shape(bl_grid_pts) + tm_dots(size = 0.3, shape = 18, col = "red", alpha = 0.3) + # grid trap locs -->
+<!--   tm_shape(A1425) + tm_dots(size = 0.25, shape = 21, col = "Year", palette = "BrBG", border.col = "grey", alpha = 0.6) + -->
+<!--   tm_shape(A1425_2019.lines, unit = "km") +  -->
+<!--   tm_lines(col = "id", palette = c("#018571", "#80cdc1"),  -->
+<!--              title.col = "2019 % kUD", lwd = 2) + -->
+<!--   tm_shape(A1425_2018.lines, unit = "km") +  -->
+<!--   tm_lines(col = "id", palette = c("#a6611a", "#dfc27d"),  -->
+<!--              title.col = "2018 % kUD", lwd = 2) + -->
+<!--   tm_compass(text.size = 1.2, size = 1.5, position = c("left", "top")) +  -->
+<!--   tm_scale_bar(text.size = 1.5, position = c("left", "bottom")) + -->
+<!--   tm_layout(title = paste(A1425$EarTag), -->
+<!--             title.position = c("left", "top"), -->
+<!--             legend.outside = TRUE, -->
+<!--             legend.title.size = 1.1, -->
+<!--             legend.text.size = 1)  -->
+
+<!-- # tmap_save(olapmap_A1425, filename = "../Results/A1425_overlap.pdf", dpi = 600)   -->
+<!-- ``` -->
+
+<!-- #### A1698 -->
+<!-- ```{r A1698-map, echo=TRUE, tidy=TRUE, results='hide'} -->
+<!--  # separate relocation points for A1698 from the main relocation dataset -->
+<!--   A1698_2018 <- subset(hares.triangd, hares.triangd$EarTag == "A1698" & hares.triangd$Frequency == "149.053")  -->
+<!--   A1698_2019 <- subset(hares.triangd, hares.triangd$EarTag == "A1698" & hares.triangd$Frequency == "149.294") -->
+
+<!--   # add column identifying the sampling year -->
+<!--   A1698_2018$Year <- "2018" -->
+<!--   A1698_2019$Year <- "2019" -->
+
+<!--   # bind the two datasets towgether and convert sampling year to a factor -->
+<!--   A1698 <- spRbind(A1698_2018, A1698_2019) -->
+<!--   A1698$Year <- as.factor(A1698$Year) -->
+<!--   A1698$Frequency <- as.factor(A1698$Frequency) -->
+
+<!--   # convert kUD polygons into lines to draw just the borders of 50% and 90% kUDs -->
+<!--   A1698_2018.lines <- as(hares.kUD.contour$`149.053`, "SpatialLinesDataFrame") -->
+<!--   A1698_2019.lines <- as(hares.kUD.contour$`149.294`, "SpatialLinesDataFrame") -->
+
+<!--   # set projection for lines -->
+<!--   A1698_2018.lines@proj4string <- A1698_2018@proj4string -->
+<!--   A1698_2019.lines@proj4string <- A1698_2019@proj4string -->
+
+<!--   # define temporary bbox -->
+<!--   bbox_temp <- st_bbox(A1698_2019.lines) # current bounding box -->
+
+<!--   xrange <- bbox_temp$xmax - bbox_temp$xmin # range of x values -->
+<!--   yrange <- bbox_temp$ymax - bbox_temp$ymin # range of y values -->
+
+<!--   bbox_temp[1] <- bbox_temp[1] - (0.25 * xrange) # xmin - left -->
+<!--   bbox_temp[3] <- bbox_temp[3] + (0.25 * xrange) # xmax - right -->
+<!--   bbox_temp[2] <- bbox_temp[2] - (0.25 * yrange) # ymin - bottom -->
+<!--   bbox_temp[4] <- bbox_temp[4] + (0.25 * yrange) # ymax - top -->
+
+<!--   bbox_temp <- bbox_temp %>%  # take the bounding box ... -->
+<!--       st_as_sfc() # ... and make it a sf polygon -->
+
+
+<!--   # mapping -->
+<!-- olapmap_A1698 <- tm_shape(forest_clip, bbox = bbox_temp) +  -->
+<!--   tm_borders(col = "grey") + # background FRI layer -->
+<!--   tm_shape(bl_grid_pts) + tm_dots(size = 0.3, shape = 18, col = "red", alpha = 0.3) + # grid trap locs -->
+<!--   tm_shape(A1698) + tm_dots(size = 0.25, shape = 21, col = "Year", palette = "BrBG", border.col = "grey", alpha = 0.6) + -->
+<!--   tm_shape(A1698_2019.lines, unit = "km") +  -->
+<!--   tm_lines(col = "id", palette = c("#018571", "#80cdc1"),  -->
+<!--              title.col = "2019 % kUD", lwd = 2) + -->
+<!--   tm_shape(A1698_2018.lines, unit = "km") +  -->
+<!--   tm_lines(col = "id", palette = c("#a6611a", "#dfc27d"),  -->
+<!--              title.col = "2018 % kUD", lwd = 2) + -->
+<!--   tm_compass(text.size = 1.2, size = 1.5, position = c("left", "top")) +  -->
+<!--   tm_scale_bar(text.size = 1.5, position = c("left", "bottom")) + -->
+<!--   tm_layout(title = paste(A1698$EarTag), -->
+<!--             title.position = c("left", "top"), -->
+<!--             legend.outside = TRUE, -->
+<!--             legend.title.size = 1.1, -->
+<!--             legend.text.size = 1) -->
+
+<!-- # tmap_save(olapmap_A1698, filename = "../Results/A1698_overlap.pdf", dpi = 600) -->
+<!-- ``` -->
+
+
+<!-- #### A3719 -->
+<!-- ```{r A3719-map, echo=TRUE, tidy=TRUE, results='hide'} -->
+<!--   # separate relocation points for A3719 from the main relocation dataset -->
+<!--   A3719_2017 <- subset(hares.triangd, hares.triangd$EarTag == "A3719" & hares.triangd$Frequency == "149.535")  -->
+<!--   A3719_2018 <- subset(hares.triangd, hares.triangd$EarTag == "A3719" & hares.triangd$Frequency == "149.003") -->
+
+<!--   # add column identifying the sampling year -->
+<!--   A3719_2017$Year <- "2017" -->
+<!--   A3719_2018$Year <- "2018" -->
+
+<!--   # bind the two datasets towgether and convert sampling year to a factor -->
+<!--   A3719 <- spRbind(A3719_2017, A3719_2018) -->
+<!--   A3719$Year <- as.factor(A3719$Year) -->
+<!--   A3719$Frequency <- as.factor(A3719$Frequency) -->
+
+<!--   # convert kUD polygons into lines to draw just the borders of 50% and 90% kUDs -->
+<!--   A3719_2017.lines <- as(hares.kUD.contour$`149.535`, "SpatialLinesDataFrame") -->
+<!--   A3719_2018.lines <- as(hares.kUD.contour$`149.003`, "SpatialLinesDataFrame") -->
+
+<!--   # set projection for lines -->
+<!--   A3719_2017.lines@proj4string <- A3719_2017@proj4string -->
+<!--   A3719_2018.lines@proj4string <- A3719_2018@proj4string -->
+
+<!--   # define temporary bbox -->
+<!--   bbox_temp <- st_bbox(A3719_2018.lines) # current bounding box -->
+
+<!--   xrange <- bbox_temp$xmax - bbox_temp$xmin # range of x values -->
+<!--   yrange <- bbox_temp$ymax - bbox_temp$ymin # range of y values -->
+
+<!--   bbox_temp[1] <- bbox_temp[1] - (0.25 * xrange) # xmin - left -->
+<!--   bbox_temp[3] <- bbox_temp[3] + (0.25 * xrange) # xmax - right -->
+<!--   bbox_temp[2] <- bbox_temp[2] - (0.25 * yrange) # ymin - bottom -->
+<!--   bbox_temp[4] <- bbox_temp[4] + (0.25 * yrange) # ymax - top -->
+
+<!--   bbox_temp <- bbox_temp %>%  # take the bounding box ... -->
+<!--       st_as_sfc() # ... and make it a sf polygon -->
+
+
+<!-- # mapping -->
+<!-- olapmap_A3719 <- tm_shape(forest_clip, bbox = bbox_temp) +  -->
+<!--   tm_borders(col = "grey") + # background FRI layer -->
+<!--   tm_shape(bl_grid_pts) + tm_dots(size = 0.3, shape = 18, col = "red", alpha = 0.3) + # grid trap locs -->
+<!--   tm_shape(A3719) + tm_dots(size = 0.25, shape = 21, col = "Year", palette = "BrBG", border.col = "grey", alpha = 0.6) + -->
+<!--   tm_shape(A3719_2018.lines, unit = "km") +  -->
+<!--   tm_lines(col = "id", palette = c("#018571", "#80cdc1"),  -->
+<!--              title.col = "2018 % kUD", lwd = 2) + -->
+<!--   tm_shape(A3719_2017.lines, unit = "km") +  -->
+<!--   tm_lines(col = "id", palette = c("#a6611a", "#dfc27d"),  -->
+<!--              title.col = "2017 % kUD", lwd = 2) + -->
+<!--   tm_compass(text.size = 1.2, size = 1.5, position = c("left", "top")) +  -->
+<!--   tm_scale_bar(text.size = 1.5, position = c("left", "bottom")) + -->
+<!--   tm_layout(title = paste(A3719$EarTag), -->
+<!--             title.position = c("left", "top"), -->
+<!--             legend.outside = TRUE, -->
+<!--             legend.title.size = 1.1, -->
+<!--             legend.text.size = 1) -->
+
+<!-- # tmap_save(olapmap_A3719, filename = "../Results/A3719_overlap.pdf", dpi = 600) -->
+<!-- ``` -->
+
+<!-- #### A3769 -->
+<!-- ```{r A3769-map, echo=TRUE, tidy=TRUE, results='hide'} -->
+<!--  # separate relocation points for A3769 from the main relocation dataset -->
+<!--   A3769_2018 <- subset(hares.triangd, hares.triangd$EarTag == "A3769" & hares.triangd$Frequency == "149.274")  -->
+<!--   A3769_2019 <- subset(hares.triangd, hares.triangd$EarTag == "A3769" & hares.triangd$Frequency == "150.314") -->
+
+<!--   # add column identifying the sampling year -->
+<!--   A3769_2018$Year <- "2018" -->
+<!--   A3769_2019$Year <- "2019" -->
+
+<!--   # bind the two datasets towgether and convert sampling year to a factor -->
+<!--   A3769 <- spRbind(A3769_2018, A3769_2019) -->
+<!--   A3769$Year <- as.factor(A3769$Year) -->
+<!--   A3769$Frequency <- as.factor(A3769$Frequency) -->
+
+<!--   # convert kUD polygons into lines to draw just the borders of 50% and 90% kUDs -->
+<!--   A3769_2018.lines <- as(hares.kUD.contour$`149.274`, "SpatialLinesDataFrame") -->
+<!--   A3769_2019.lines <- as(hares.kUD.contour$`150.314`, "SpatialLinesDataFrame") -->
+
+<!--   # set projection for lines -->
+<!--   A3769_2018.lines@proj4string <- A3769_2018@proj4string -->
+<!--   A3769_2019.lines@proj4string <- A3769_2019@proj4string -->
+
+<!--   # define temporary bbox -->
+<!--   bbox_temp <- st_bbox(A3769_2018.lines) # current bounding box -->
+
+<!--   xrange <- bbox_temp$xmax - bbox_temp$xmin # range of x values -->
+<!--   yrange <- bbox_temp$ymax - bbox_temp$ymin # range of y values -->
+
+<!--   bbox_temp[1] <- bbox_temp[1] - (0.25 * xrange) # xmin - left -->
+<!--   bbox_temp[3] <- bbox_temp[3] + (0.25 * xrange) # xmax - right -->
+<!--   bbox_temp[2] <- bbox_temp[2] - (0.25 * yrange) # ymin - bottom -->
+<!--   bbox_temp[4] <- bbox_temp[4] + (0.25 * yrange) # ymax - top -->
+
+<!--   bbox_temp <- bbox_temp %>%  # take the bounding box ... -->
+<!--       st_as_sfc() # ... and make it a sf polygon -->
+
+
+<!-- # mapping -->
+<!-- olapmap_A3769 <- tm_shape(forest_clip, bbox = bbox_temp) +  -->
+<!--   tm_borders(col = "grey") + # background FRI layer -->
+<!--   tm_shape(bl_grid_pts) + tm_dots(size = 0.3, shape = 18, col = "red", alpha = 0.3) + # grid trap locs -->
+<!--   tm_shape(A3769) + tm_dots(size = 0.25, shape = 21, col = "Year", palette = "BrBG", border.col = "grey", alpha = 0.6) + -->
+<!--   tm_shape(A3769_2019.lines, unit = "km") +  -->
+<!--   tm_lines(col = "id", palette = c("#018571", "#80cdc1"),  -->
+<!--              title.col = "2019 % kUD", lwd = 2) + -->
+<!--   tm_shape(A3769_2018.lines, unit = "km") +  -->
+<!--   tm_lines(col = "id", palette = c("#a6611a", "#dfc27d"),  -->
+<!--              title.col = "2018 % kUD", lwd = 2) + -->
+<!--   tm_compass(text.size = 1.2, size = 1.5, position = c("left", "top")) +  -->
+<!--   tm_scale_bar(text.size = 1.5, position = c("left", "bottom")) + -->
+<!--   tm_layout(title = paste(A3769$EarTag), -->
+<!--             title.position = c("left", "top"), -->
+<!--             legend.outside = TRUE, -->
+<!--             legend.title.size = 1.1, -->
+<!--             legend.text.size = 1) -->
+
+<!-- # tmap_save(olapmap_A3769, filename = "../Results/A3769_overlap.pdf", dpi = 600) -->
+<!-- ``` -->
+
+
+

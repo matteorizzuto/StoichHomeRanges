@@ -1,0 +1,1505 @@
+---
+title: "Analyses of stoichiometry of larger home range estimates"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+author: "Matteo Rizzuto"
+output:
+  rmdformats::html_clean:
+    self_contained: false
+    thumbnails: true
+    lightbox: true
+    gallery: true
+    highlight: tango
+    code_folding: hide
+    fig_width: 12
+    fig_height: 8
+    df_print: paged
+  pdf_document:
+    citation_package: biblatex
+    dev: pdf
+    fig_caption: true
+    fig_width: 7
+    fig_height: 2.64
+    highlight: tango
+    keep_tex: true
+    latex_engine: pdflatex
+    toc: true
+    df_print: kable    
+fontsize: 11pt
+geometry: margin=1in
+documentclass: article    
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/functional-ecology.csl
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r eval=FALSE, include=FALSE, tidy=TRUE}
+# if running as a standalone, change chunk options to evaluation this 
+# code chunk
+# knitr::knit('HomeRangeEstimation.Rmd', tangle=TRUE)
+# source('HomeRangeEstimation.R')
+# 
+# knitr::knit('ModelStoichHR.Rmd', tangle=TRUE)
+# source('ModelStoichHR.R')
+```
+
+## Stoichiometry and Home Range Size --- 75% kUD
+In this section, we investigate if the relationship between resource 
+stoichiometry and home range size persist when using estimates of home range 
+area produced from two larger kUD isopleths, e.g. 75%.
+
+### Home range area at 75% kUD
+First, we produce the necessary home range area estimates. Then, we use it to
+extract the resources stoichiometric data and extract summary statistics about
+them.
+```{r 75-kud, echo=TRUE, tidy=TRUE}
+# hrArea.75 <- kUD.hr.estimates[6, ]
+# hrArea.75 <- tidyr::pivot_longer(hrArea.75, cols = 1:ncol(hrArea.75), names_to = "CollarFrequency", values_to = "HRsize", names_prefix = "X")
+# 
+# hares.kUDhr.75 <- getverticeshr(hares.kUD, percent = 75)
+# 
+# # allocate an empty list of projected kUD as Spatial objects
+# stoich.hares.75 <- data.frame(CollarFrequency = character(0),
+#                       # ABBA_CN = numeric(0), ABBA_CP = numeric(0), 
+#                       ACRU_CN = numeric(0), ACRU_NP = numeric(0), 
+#                       VAAN_CN = numeric(0), VAAN_CP = numeric(0), 
+#                       VAAN_NP = numeric(0))
+# 
+# # remove collars with too few relocations for further analysis
+# 
+# hares.kUDhr.75$id <- as.factor(hares.kUDhr.75$id)
+# 
+# hares.kUDhr.75 <- subset(hares.kUDhr.75, 
+#                          hares.kUDhr.75$id != "149.555" # &
+#                          # hares.kUDhr.50$id != "150.032" &
+#                          # hares.kUDhr.50$id != "150.052" &
+#                          # hares.kUDhr.50$id != "150.154" 
+#                          )
+# 
+# hares.kUDhr.75$id <- droplevels(hares.kUDhr.75$id)
+# 
+# # Create new indexing vector only for Bloomfield
+# UniqCIDs.bl <- as.vector(droplevels(unique(hares.kUDhr.75$id)))
+# 
+# for (i in 1:length(UniqCIDs.bl)) {
+#   # select the home range of interest
+#   temp.hr.75 <- hares.kUDhr.75[hares.kUDhr.75$id == UniqCIDs.bl[i],]
+#   
+#   # transform CRS of temp.kUDhr to that of stoich_stack
+#   temp.hr.75 <- spTransform(temp.hr.75, CRSobj = crs(stoich_stack))  
+#   
+#   # extract the stoich values for the home range of interest and store it 
+#   # temporarily in a dataframe
+#   temp.stoich.hr75 <- raster::extract(stoich_stack, 
+#                                       temp.hr.75, method = "simple", 
+#                                       weights = TRUE, df = TRUE, 
+#                                       small = TRUE,
+#                                       normalizeWeights = TRUE, 
+#                                       cellnumbers = TRUE)
+#   # browser()
+#   
+#   # assign home range id to the temporary stoich dataframe
+#   temp.stoich.hr75$CollarFrequency <- UniqCIDs.bl[i]
+#   
+#   # bind the temporary stoich dataframe with the permanent one
+#   
+#   stoich.hares.75 <- dplyr::bind_rows(stoich.hares.75, temp.stoich.hr75)
+#   
+#   # projkUDsp.df <- na.omit(projkUDsp.df)
+#   
+#   # browser()
+#   
+#   # print(i)
+# }
+
+# And now let's store the summary stats in a dataset, potentially for future
+# analysis
+short.stoich.hares.75 <- stoich75 %>% group_by(CollarFrequency) %>% 
+  summarise_at(.vars = vars(ACRU_CN, ACRU_NP, VAAN_CN, VAAN_CP, VAAN_NP), 
+               .funs = list(~mean(., na.rm = TRUE), 
+                            ~sd(., na.rm = TRUE), 
+                            ~median(., na.rm = TRUE), 
+                            ~min(., na.rm = TRUE), 
+                            ~max(., na.rm = TRUE), 
+                            ~mad(., na.rm = TRUE, low = TRUE), 
+                            ~CVar(.)))
+
+short.stoich.hares.75$CollarFrequency <- as.factor(short.stoich.hares.75$CollarFrequency)
+
+kable(short.stoich.hares.75) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                fixed_thead = TRUE) %>% 
+  scroll_box(width = "100%", height = "500px")
+```
+
+Now, We merge the newly-produced dataframe containing the stoichiometry of resources at 75% kUD with the hare demographic dataset.
+
+```{r hr-models-pre-75, echo=TRUE, message=FALSE, tidy=TRUE}
+# make the kUD home range area SpatialPolygonsDataFrame into a "normal" dataframe
+hares.HR75 <- hr_seventyfive[, c(1,3)] %>% 
+  dplyr::rename(., CollarFrequency = frequency, HRsize = seventyfive)
+
+# merge the demographic and kUD dataframes, then reorder the variables more 
+# logically, and finalle break variable "Date" into its three components
+# "Year", "Month", and "Day". "Year" will be important in later modelling. 
+hareData75 <- merge(hareDemData, hares.HR75, by = "CollarFrequency") %>% 
+  dplyr::select("CollarFrequency", "EarTag", "SiteName":"SamplingYear",
+                "WeightSSH_g":"TickLoad", "HRsize", 
+                "DateTrapped", "Comment") %>% 
+  separate("DateTrapped", into = c("YearTrp", "MonthTrp", "DayTrp"), 
+           sep = "-", remove = TRUE)
+
+hareData75$SamplingYear <- as.factor(hareData75$SamplingYear)
+
+# check for consistency in the collars present in the two datasets
+# if the console returns <0 rows> all is good
+dplyr::anti_join(hareData75, short.stoich.hares.75) 
+
+# add the stoich data to the demographics-home range dataset
+hare.stoich.75 <- merge(hareData75, short.stoich.hares.75, 
+                        by = "CollarFrequency") %>% 
+  dplyr::select("CollarFrequency", "EarTag", "SiteName", "Trap", "SamplingYear", 
+                "YearTrp":"DayTrp", "WeightSSH_g":"Sex", "HRsize", 
+                "ACRU_CN_mean":"VAAN_NP_CVar")
+
+kable(hare.stoich.75) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                fixed_thead = TRUE) %>% 
+  scroll_box(width = "100%", height = "500px")
+```
+
+<!-- Now, let's perform the random shuffling of the pseudoreplicated individuals, to  -->
+<!-- ensure models only ever use 1 of the 2 home range estimates for the n = 4  -->
+<!-- individuals that were followed for 2 years. -->
+
+```{r pseudorep-randomsample-75, eval=FALSE, include=FALSE, tidy=TRUE}
+# Note, this code is not in use anymore since we focus on the most data rich 
+# years to estimate the home range size of individuals with more than 1 year of
+# telemetry sampling
+
+# This code chunk randomly draws one out of each pair of pseudoreplicated entries
+# in the hareData dataset (i.e., the entries with more than 1 year of sampling data)
+hare.stoich.clean.75 <- do.call(rbind, lapply(split(hare.stoich.75, hare.stoich.75$EarTag), function(x) x[sample(nrow(x), 1), ]))
+
+kable(hare.stoich.clean.75) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"), fixed_thead = TRUE) %>%
+  scroll_box(width = "100%", height = "500px")
+```
+
+Again, the first test we are going to perform is a test of the effect of 
+sampling year on the size of snowshoe hare home range when estimated using the 
+75% kUD isopleth.
+
+### Testing the Effect due to Sampling Year
+
+#### Data-richness-based selection
+An alternative element that may be influencing whether we have an effect of 
+Sampling Year or not is the amount of telemetry data collected for a given 
+individual in each sampling season. In the code chunk below, we fit a model of 
+home range size as a function of sampling year using data only for the most 
+data-rich year for the individuals that have two or more years of sampling.
+
+```{r 75-year-models-3, echo=TRUE, warning=FALSE, tidy=TRUE}
+hare.rich.75 <- subset(hare.stoich.75, hare.stoich.75$CollarFrequency != "149.653" & hare.stoich.75$CollarFrequency != "149.053" & hare.stoich.75$CollarFrequency != "149.003" & hare.stoich.75$CollarFrequency != "149.274")
+
+hare.rich.mod <- lm(HRsize ~ SamplingYear, data = hare.rich.75) 
+
+summary(hare.rich.mod)
+lindia::gg_diagnose(hare.rich.mod)
+
+ggplot(data = hare.rich.75, aes(x = SamplingYear, y = HRsize)) + geom_boxjitter(outlier.intersect = TRUE) + xlab("Sampling Year") + ylab("Home Range Size (ha)") + theme_classic() + theme(text = element_text(size = 18))
+# ggsave(filename = "../Results/HRsizeDataRich.png")
+
+# write.csv(hare.rich.75, file = "../Results/HareRichStoich_75kUD.csv")
+```
+
+#### Random draw of pseudoreplicates
+Here, we randomly sample the four pairs of pseudoreplicated home range estimates
+100 times and, for each of these 100 replicates, we run a simple linear model 
+including only the Sampling Year as an explanatory variable. 
+
+```{r 75-year-models-1, echo=TRUE, tidy=TRUE}
+hare.pseudo <- vector("list", length = 100)
+year_mods <- vector("list", length = 100) 
+
+for (i in 1:length(year_mods)) {
+
+hare.pseudo[[i]] <- do.call(rbind, lapply(split(hare.stoich.75, hare.stoich.75$EarTag), function(x) x[sample(nrow(x), 1), ]))
+
+year_mods[[i]] <- lm(HRsize ~ SamplingYear, data = hare.pseudo[[i]]) 
+
+# gg_diagnose(year_mods[[i]])
+
+# browser()
+}
+
+yearmods_kab <- purrr::map_dfr(year_mods, broom::tidy, .id = "model")
+
+kable(yearmods_kab) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), fixed_thead = TRUE) %>%
+  pack_rows(index = table(fct_inorder(yearmods_kab$model))) %>%
+  scroll_box(width = "100%", height = "500px")
+```
+
+#### Year-based selection
+It is possible that the increasing temporal distance between the plant 
+stoichiometric data collected in 2016 and the snowshoe hare telemetry data 
+collected in 2017, 2018, and 2019 may be affecting the results of the models 
+including only Sampling Year. To test for this, the code chunk below runs a 
+model on a dataset of home range size estimate that include data based on when 
+they were collected: for individuals with 2 or more years of data collection, we
+include only the home range size estimate obtained from the year closer to the 
+plant sampling.
+
+```{r 75-year-models-2, echo=TRUE, tidy=TRUE}
+hare.year.75 <- subset(hare.stoich.75, hare.stoich.75$CollarFrequency != "150.173" & hare.stoich.75$CollarFrequency != "149.294" & hare.stoich.75$CollarFrequency != "149.003" & hare.stoich.75$CollarFrequency != "150.314")
+
+hare.year.mod <- lm(HRsize ~ SamplingYear, data = hare.year.75) 
+
+summary(hare.year.mod)
+lindia::gg_diagnose(hare.year.mod)
+
+ggplot(data = hare.year.75, aes(x = SamplingYear, y = HRsize)) + geom_boxjitter(outlier.intersect = TRUE) + xlab("Sampling Year") + labs(y=expression("Home range size (ha)")) + theme_classic() + theme(text = element_text(size = 18))
+# ggsave(filename = "../Results/HRsizeSYear.png")
+```
+
+Because there appears to be no effect of sampling year on the home range size
+of our snowshoe hare, we will use the years with mode data for each of the 4 
+snowshoe hares for which we have telemetry data for more than one --- i.e., for 
+the analyses below we will use the dataset `hare.rich.75`. 
+
+### Red Maple C:N  {.tabset .tabset-fade .tabset-pills}
+
+Click on each tab to see the summary and diagnostic plots for each model.
+
+#### Intercept-only
+```{r 75-ACRU-CN-null, echo=TRUE, tidy=TRUE, warning=FALSE}
+# Red Maple CN mean
+acrucnnull.75 <- lm(HRsize ~ 1, data = hare.rich.75)
+
+# check model output
+summary(acrucnnull.75)
+```
+
+#### Mean-only
+```{r 75-ACRU-CN-only, echo=TRUE, tidy=TRUE, warning=FALSE}
+# Red Maple CN mean
+acruCNhr.75 <- lm(HRsize ~ ACRU_CN_mean, data = hare.rich.75)
+
+# check model output
+summary(acruCNhr.75)
+```
+
+*Diagnostic plots*
+```{r 75-ACRU-CN-only-diag, echo=TRUE, tidy=TRUE}
+# diagnostic plots using lindia package
+
+gg_diagnose(acruCNhr.75, theme = theme_classic())
+```
+
+#### Coeff. Var.-only
+```{r 75-ACRU-CN-cv-only, echo=TRUE, tidy=TRUE, warning=FALSE}
+acruCNcvhr.75 <- lm(HRsize ~ ACRU_CN_CVar, data = hare.rich.75)
+
+# check model output
+summary(acruCNcvhr.75)
+```
+
+*Diagnostic plots*
+```{r 75-ACRU-CN-cv-only-diag, echo=TRUE, tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(acruCNcvhr.75, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r 75-data-vs-pred-acrucn-1, echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+hare.predplot <- augment(acruCNcvhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+
+ggplot(hare.predplot, aes(x = ACRU_CN_CVar, y = HRsize)) +
+  geom_segment(aes(xend = ACRU_CN_CVar, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("Average Blueberry N:P") +
+  ylab("Home Range size (ha)") +
+  ggtitle("75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  theme_few()
+```
+
+#### Mean + Weight
+```{r 75-ACRU-CN-multi,echo=TRUE,tidy=TRUE}
+# 1. Red Maple CN mean
+acruCNhr.exp.75 <- lm(HRsize ~ ACRU_CN_mean + WeightSSH_g, data = hare.rich.75)
+
+# check model output
+summary(acruCNhr.exp.75)
+```
+*Diagnostic Plots*
+```{r 75-ACRU-CN-multi-diag,echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(acruCNhr.exp.75, theme = theme_classic())
+```
+
+#### Coeff. Var. + Weight
+```{r 75-ACRU-CN-multi-cv,echo=TRUE,tidy=TRUE}
+acruCNcv.exp.75 <- lm(HRsize ~ ACRU_CN_CVar + WeightSSH_g, data = hare.rich.75)
+
+# check model output
+summary(acruCNcv.exp.75)
+```
+
+*Diagnostic Plots*
+```{r 75-ACRU-CN-multi-cv-diag,echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(acruCNcv.exp.75, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r 75-data-vs-pred-acrucn-2, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(acruCNcv.exp.75, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `ACRU_CN_CVar` = "Average Red Maple N:P",
+  `WeightSSH_g` = "Snowshoe hare body weight (g)"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha) - 75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+#### Mean + Coeff. Var.
+```{r 75-plus-stoich-acrucn-1, echo=TRUE, tidy=TRUE}
+acrucn.plus.75 <- lm(HRsize ~ ACRU_CN_mean+ACRU_CN_CVar, data = hare.rich.75)
+
+summary(acrucn.plus.75)
+```
+
+*Diagnostic Plots*
+```{r 75-p-acrucn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrucn.plus.75, theme = theme_classic())
+```
+
+#### Mean * Coeff. Var.
+```{r 75-joint-stoich-acrucn-2, echo=TRUE, tidy=TRUE}
+acrucn.joint.75 <- lm(HRsize ~ ACRU_CN_mean*ACRU_CN_CVar, data = hare.rich.75)
+
+summary(acrucn.joint.75)
+```
+
+*Diagnostic Plots*
+```{r 75-js-acrucn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrucn.joint.75, theme = theme_classic())
+```
+
+#### Mean + Coeff. Var. + Weight
+```{r 75-stoich-weight-acrucn-1, echo=TRUE, tidy=TRUE}
+acrucn.sw.75 <- lm(HRsize ~ ACRU_CN_mean+ACRU_CN_CVar+WeightSSH_g, data = hare.rich.75)
+
+summary(acrucn.sw.75)
+```
+
+*Diagnostic Plots*
+```{r 75-sw-acrucn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrucn.sw.75, theme = theme_classic())
+```
+
+#### Mean * Coeff. Var. + Weight
+```{r 75-jsw-stoich-acrucn-2, echo=TRUE, tidy=TRUE}
+acrucn.jsw.75 <- lm(HRsize ~ ACRU_CN_mean*ACRU_CN_CVar+WeightSSH_g, data = hare.rich.75)
+
+summary(acrucn.jsw.75)
+```
+
+*Diagnostic Plots*
+```{r 75-jsw-acrucn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrucn.jsw.75, theme = theme_classic())
+```
+
+#### AICc Table
+```{r 75-acrucn-aicc-tab, echo=TRUE, tidy=TRUE}
+mods.75 <- list()
+mods.75[[1]] <- acruCNhr.75
+mods.75[[2]] <- acruCNcvhr.75
+mods.75[[3]] <- acruCNhr.exp.75
+mods.75[[4]] <- acruCNcv.exp.75
+mods.75[[5]] <- acrucn.plus.75
+mods.75[[6]] <- acrucn.joint.75
+mods.75[[7]] <- acrucn.sw.75
+mods.75[[8]] <- acrucn.jsw.75
+mods.75[[9]] <- acrucnnull.75
+
+mods.names <- c("HRsize ~ Mean C:N", #1
+  "HRsize ~ C:N CV", #2
+  "HRsize ~ Mean C:N + Weight", #3
+  "HRsize ~ C:N CV + Weight", #4
+  "HRsize ~ Mean C:N + C:N CV", # 5
+  "HRsize ~ Mean C:N * C:N CV", #6
+  "HRsize ~ Mean C:N + C:N CV + Weight", #7
+  "HRsize ~ Mean C:N * C:N CV + Weight", #8
+  "Intercept" #9 
+)
+
+acruCN_aicctab.75 <- aictab(mods.75, modnames = mods.names, second.ord = T, sort = T)
+
+# Allocate and populate a list of adjusted R square values following the same order as the best of model created up off
+rsq.75 <- list()
+for (i in 1:length(mods.75)) {
+  rsq.75[[i]] <- summary(mods.75[[i]])$r.squared
+}
+# add names to the adjusted R square values list
+names(rsq.75) <- mods.names
+rsqdf.75 <- enframe(rsq.75, name = "Modnames", value = "Rsq") %>% unnest(cols = c("Modnames", "Rsq"))
+
+rsqdf.75$Modnames <- as_factor(rsqdf.75$Modnames)
+
+# save the now complete AIC table as new object
+acruCNaicRsq.75 <- acruCN_aicctab.75 %>% merge(., rsqdf.75) %>% arrange(., Delta_AICc)  
+
+# Generate publication quality AIC table
+gt(acruCNaicRsq.75) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Red Maple C:N - 75% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+```
+
+### Blueberry C:N  {.tabset .tabset-fade .tabset-pills}
+
+Click on each tab to see the summary and diagnostic plots for each model.
+
+#### Intercept-only
+```{r 75-VAAN-CN-null, echo=TRUE, tidy=TRUE}
+# 2. Blueberry CN mean
+vaancnnull.75 <- lm(HRsize ~ 1, data = hare.rich.75)
+
+summary(vaancnnull.75)
+```
+
+#### Mean-only
+```{r 75-VAAN-CN-only, echo=TRUE, tidy=TRUE}
+# 2. Blueberry CN mean
+vaanCNhr.75 <- lm(HRsize ~ VAAN_CN_mean, data = hare.rich.75)
+
+summary(vaanCNhr.75)
+```
+
+*Diagnostic plots*
+```{r 75-VAAN-CN-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+
+gg_diagnose(vaanCNhr.75, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r 75-data-vs-pred-vaancn-1, echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+hare.predplot <- augment(vaanCNhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+
+q2<-ggplot(hare.predplot, aes(x = VAAN_CN_mean, y = HRsize)) +
+  geom_segment(aes(xend = VAAN_CN_mean, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("Average Blueberry N:P") +
+  ylab("Home Range size (ha)") +
+  ggtitle("75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  theme_few() + 
+  theme(text = element_text(size = 20))
+
+q2
+```
+
+#### Coeff. Var.-only
+```{r 75-VAAN-CN-cv-only, echo=TRUE, tidy=TRUE}
+vaanCNcvhr.75 <- lm(HRsize ~ VAAN_CN_CVar, data = hare.rich.75)
+
+summary(vaanCNcvhr.75)
+```
+
+*Diagnostic plots*
+```{r 75-VAAN-CN-cv-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(vaanCNcvhr.75, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r 75-data-vs-pred-vaancn-2, echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+hare.predplot <- augment(vaanCNcvhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+
+p2 <- ggplot(hare.predplot, aes(x = VAAN_CN_CVar, y = HRsize)) +
+  geom_segment(aes(xend = VAAN_CN_CVar, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("Blueberry C:N Coefficient of Variation") +
+  ylab("Home Range size (ha)") +
+  ggtitle("75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  theme_few()+
+  theme(text = element_text(size = 20))
+
+p2
+```
+
+#### Mean + Weight
+```{r 75-VAAN-CN-multi,echo=TRUE,tidy=TRUE}
+# 2. Blueberry CN mean
+vaanCNhr.exp.75 <- lm(HRsize ~ VAAN_CN_mean + WeightSSH_g, data = hare.rich.75)
+
+summary(vaanCNhr.exp.75)
+```
+*Diagnostic Plots*
+```{r 75-VAAN-CN-multi-diag,echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(vaanCNhr.exp.75, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r 75-data-vs-pred-vaancn-3, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(vaanCNhr.exp.75, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `VAAN_CN_mean` = "Average Blueberry N:P",
+  `WeightSSH_g` = "Snowshoe hare body weight (g)"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha) - 75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+#### Coeff. Var. + Weight
+```{r 75-VAAN-CN-multi-cv,echo=TRUE,tidy=TRUE}
+vaanCNcv.exp.75 <- lm(HRsize ~ VAAN_CN_CVar + WeightSSH_g, data = hare.rich.75)
+
+summary(vaanCNcv.exp.75)
+```
+
+*Diagnostic Plots*
+```{r 75-VAAN-CN-multi-cv-diag,echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(vaanCNcv.exp.75, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r 75-data-vs-pred-vaancn-4, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(vaanCNcv.exp.75, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `VAAN_CN_CVar` = "Blueberry C:N Coefficient of Variation",
+  `WeightSSH_g` = "Snowshoe hare body weight (g)"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha) - 75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_grid(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names)) + 
+  theme_few()
+```
+
+#### Mean + Coeff. Var.
+```{r 75-plus-stoich-vaancn-1, echo=TRUE, tidy=TRUE}
+vaancn.plus.75 <- lm(HRsize ~ VAAN_CN_mean+VAAN_CN_CVar, data = hare.rich.75)
+
+summary(vaancn.plus.75)
+
+confint(vaancn.plus.75)
+```
+
+*Diagnostic Plots*
+```{r 75-p-vaancn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancn.plus.75, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r 75-data-vs-pred-vaancn-5, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(vaancn.plus.75, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `VAAN_CN_mean` = "Blueberry Average C:N",
+  `VAAN_CN_CVar` = "Blueberry C:N Coefficient of Variation"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha)") +
+  ggtitle("75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", 
+             labeller = as_labeller(covariates_names), 
+             strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+
+#### Mean * Coeff. Var.
+```{r 75-joint-stoich-vaancn-2, echo=TRUE, tidy=TRUE}
+vaancn.joint.75 <- lm(HRsize ~ VAAN_CN_mean*VAAN_CN_CVar, data = hare.rich.75)
+
+summary(vaancn.joint.75)
+
+confint(vaancn.joint.75)
+```
+
+*Diagnostic Plots*
+```{r 75-js-vaancn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancn.joint.75, theme = theme_classic())
+```
+
+#### Mean + Coeff. Var. + Weight
+```{r 75-stoich-weight-vaancn-1, echo=TRUE, tidy=TRUE}
+vaancn.sw.75 <- lm(HRsize ~ VAAN_CN_mean+VAAN_CN_CVar+WeightSSH_g, data = hare.rich.75)
+
+summary(vaancn.sw.75)
+
+confint(vaancn.sw.75)
+```
+
+*Diagnostic Plots*
+```{r 75-sw-vaancn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancn.sw.75, theme = theme_classic())
+```
+
+#### Mean * Coeff. Var. + Weight
+```{r 75-jsw-stoich-vaancn-2, echo=TRUE, tidy=TRUE}
+vaancn.jsw.75 <- lm(HRsize ~ VAAN_CN_mean*VAAN_CN_CVar+WeightSSH_g, data = hare.rich.75)
+
+summary(vaancn.jsw.75)
+```
+
+*Diagnostic Plots*
+```{r 75-jsw-vaancn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancn.jsw.75, theme = theme_classic())
+```
+
+#### AICc Table
+```{r 75-vaancn-aicc-tab, echo=TRUE, tidy=TRUE}
+mods.75 <- list()
+mods.75[[1]] <- vaanCNhr.75
+mods.75[[2]] <- vaanCNcvhr.75
+mods.75[[3]] <- vaanCNhr.exp.75
+mods.75[[4]] <- vaanCNcv.exp.75
+mods.75[[5]] <- vaancn.plus.75
+mods.75[[6]] <- vaancn.joint.75
+mods.75[[7]] <- vaancn.sw.75
+mods.75[[8]] <- vaancn.jsw.75
+mods.75[[9]] <- vaancnnull.75
+
+mods.names <- c("HRsize ~ Mean C:N", #1
+  "HRsize ~ C:N CV", #2
+  "HRsize ~ Mean C:N + Weight", #3
+  "HRsize ~ C:N CV + Weight", #4
+  "HRsize ~ Mean C:N + C:N CV", # 5
+  "HRsize ~ Mean C:N * C:N CV", #6
+  "HRsize ~ Mean C:N + C:N CV + Weight", #7
+  "HRsize ~ Mean C:N * C:N CV + Weight", #8
+  "Intercept" #9 
+)
+
+vaanCN_aicctab.75 <- aictab(mods.75, modnames = mods.names, second.ord = T, sort = T)
+
+# Allocate and populate a list of adjusted R square values following the same order as the best of model created up off
+rsq.75 <- list()
+for (i in 1:length(mods.75)) {
+  rsq.75[[i]] <- summary(mods.75[[i]])$r.squared
+}
+# add names to the adjusted R square values list
+names(rsq.75) <- mods.names
+rsqdf.75 <- enframe(rsq.75, name = "Modnames", value = "Rsq") %>% unnest(cols = c("Modnames", "Rsq"))
+
+rsqdf.75$Modnames <- as_factor(rsqdf.75$Modnames)
+
+# save the now complete AIC table as new object
+vaanCNaicRsq.75 <- vaanCN_aicctab.75 %>% merge(., rsqdf.75) %>% arrange(., Delta_AICc)  
+
+# Generate publication quality AIC table
+gt(vaanCNaicRsq.75) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Blueberry C:N - 75% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+```
+
+
+### Red Maple N:P  {.tabset .tabset-fade .tabset-pills}
+
+Click on each tab to see the summary and diagnostic plots for each model.
+
+#### Intercept-only
+```{r 75-ACRU-NP-null, echo=TRUE, tidy=TRUE}
+# 3. Red Maple NP mean
+acrunpnull.75 <- lm(HRsize ~ 1, data = hare.rich.75)
+
+summary(acrunpnull.75)
+```
+
+#### Mean-only
+```{r 75-ACRU-NP-only, echo=TRUE, tidy=TRUE}
+# 3. Red Maple NP mean
+acruNPhr.75 <- lm(HRsize ~ ACRU_NP_mean, data = hare.rich.75)
+
+summary(acruNPhr.75)
+```
+
+*Diagnostic plots*
+```{r 75-ACRU-NP-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+
+gg_diagnose(acruNPhr.75, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r 75-data-vs-pred-acrunp-1, echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+hare.predplot <- augment(acruNPhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+
+ggplot(hare.predplot, aes(x = ACRU_NP_mean, y = HRsize)) +
+  geom_segment(aes(xend = ACRU_NP_mean, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("Average Red Maple N:P") +
+  ylab("Home Range size (ha)") +
+  ggtitle("75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  theme_few() +
+  theme(text = element_text(size = 20))
+```
+
+#### Coeff. Var.-only
+```{r 75-ACRU-NP-cv-only, echo=TRUE, tidy=TRUE}
+acruNPcvhr.75 <- lm(HRsize ~ ACRU_NP_CVar, data = hare.rich.75)
+
+summary(acruNPcvhr.75)
+```
+
+*Diagnostic plots*
+```{r 75-ACRU-NP-cv-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(acruNPcvhr.75, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r 75-data-vs-pred-acrunp-2, echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+hare.predplot <- augment(acruNPcvhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+
+ggplot(hare.predplot, aes(x = ACRU_NP_CVar, y = HRsize)) +
+  geom_segment(aes(xend = ACRU_NP_CVar, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("Red Maple N:P Coefficient of Variation") +
+  ylab("Home Range size (ha)") +
+  ggtitle("75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  theme_few() +
+  theme(text = element_text(size = 20))
+```
+
+#### Mean + Weight
+```{r 75-ACRU-NP-multi,echo=TRUE,tidy=TRUE}
+# 3. Red Maple NP mean
+acruNPhr.exp.75 <- lm(HRsize ~ ACRU_NP_mean + WeightSSH_g, data = hare.rich.75)
+
+summary(acruNPhr.exp.75)
+```
+
+*Diagnostic Plots*
+```{r 75-ACRU-NP-multi-diag,echo=TRUE,tidy=TRUE}
+gg_diagnose(acruNPhr.exp.75, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r 75-data-vs-pred-acrunp-3, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(acruNPhr.exp.75, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `ACRU_NP_mean` = "Average Red Maple N:P",
+  `WeightSSH_g` = "Snowshoe hare body weight (g)"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha) - 75% kZUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+#### Coeff. Var. + Weight
+```{r 75-ACRU-NP-multi-cv,echo=TRUE,tidy=TRUE}
+acruNPcv.exp.75 <- lm(HRsize ~ ACRU_NP_CVar + WeightSSH_g, data = hare.rich.75)
+
+summary(acruNPcv.exp.75)
+```
+
+*Diagnostic Plots*
+```{r 75-ACRU-NP-multi-cv-diag,echo=TRUE,tidy=TRUE}
+gg_diagnose(acruNPcv.exp.75, theme = theme_classic())
+```
+
+#### Mean + Coeff. Var.
+```{r 75-plus-stoich-acrunp-1, echo=TRUE, tidy=TRUE}
+acrunp.plus.75 <- lm(HRsize ~ ACRU_NP_mean+ACRU_NP_CVar, data = hare.rich.75)
+
+summary(acrunp.plus.75)
+
+confint(acrunp.plus.75)
+```
+
+*Diagnostic Plots*
+```{r 75-p-acrunp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrunp.plus.75, theme = theme_classic())
+```
+*Data vs Predicted Plot*
+```{r 75-data-vs-pred-acrunp-4,echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(acrunp.plus.75, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `ACRU_NP_mean` = "Average Red Maple N:P",
+  `ACRU_NP_CVar` = "Red Maple N:P Coefficient of Variation"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha)") +
+  ggtitle("75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+#### Mean * Coeff. Var.
+```{r 75-joint-stoich-acrunp-2, echo=TRUE, tidy=TRUE}
+acrunp.joint.75 <- lm(HRsize ~ ACRU_NP_mean*ACRU_NP_CVar, data = hare.rich.75)
+
+summary(acrunp.joint.75)
+```
+
+*Diagnostic Plots*
+```{r 75-js-acrunp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrunp.joint.75, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r 75-data-vs-pred-acrunp-5,echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(acrunp.joint.75, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `ACRU_NP_mean` = "Average Red Maple N:P",
+  `ACRU_NP_CVar` = "Red Maple N:P Coefficient of Variation"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha)") +
+  ggtitle("75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+#### Mean + Coeff. Var. + Weight
+```{r 75-stoich-weight-acrunp-1, echo=TRUE, tidy=TRUE}
+acrunp.sw.75 <- lm(HRsize ~ ACRU_NP_mean+ACRU_NP_CVar+WeightSSH_g, data = hare.rich.75)
+
+summary(acrunp.sw.75)
+```
+
+*Diagnostic Plots*
+```{r 75-sw-acrunp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrunp.sw.75, theme = theme_classic())
+```
+
+#### Mean * Coeff. Var. + Weight
+```{r 75-jsw-stoich-acrunp-2, echo=TRUE, tidy=TRUE}
+acrunp.jsw.75 <- lm(HRsize ~ ACRU_NP_mean*ACRU_NP_CVar+WeightSSH_g, data = hare.rich.75)
+
+summary(acrunp.jsw.75)
+
+# confint(acrunp.jsw.75)
+```
+
+*Diagnostic Plots*
+```{r 75-jsw-acrunp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrunp.jsw.75, theme = theme_classic())
+```
+
+#### AICc Table
+```{r 75-acrunp-aicc-tab, echo=TRUE, tidy=TRUE}
+mods.75 <- list()
+mods.75[[1]] <- acruNPhr.75
+mods.75[[2]] <- acruNPcvhr.75
+mods.75[[3]] <- acruNPhr.exp.75
+mods.75[[4]] <- acruNPcv.exp.75
+mods.75[[5]] <- acrunp.plus.75
+mods.75[[6]] <- acrunp.joint.75
+mods.75[[7]] <- acrunp.sw.75
+mods.75[[8]] <- acrunp.jsw.75
+mods.75[[9]] <- acrunpnull.75
+
+mods.names <- c("HRsize ~ Mean N:P", #1
+  "HRsize ~ N:P CV", #2
+  "HRsize ~ Mean N:P + Weight", #3
+  "HRsize ~ N:P CV + Weight", #4
+  "HRsize ~ Mean N:P + N:P CV", # 5
+  "HRsize ~ Mean N:P * N:P CV", #6
+  "HRsize ~ Mean N:P + N:P CV + Weight", #7
+  "HRsize ~ Mean N:P * N:P CV + Weight", #8
+  "Intercept" #9 
+)
+
+acruNP_aicctab.75 <- aictab(mods.75, modnames = mods.names, second.ord = T, sort = T)
+
+# Allocate and populate a list of adjusted R square values following the same order as the best of model created up off
+rsq.75 <- list()
+for (i in 1:length(mods.75)) {
+  rsq.75[[i]] <- summary(mods.75[[i]])$r.squared
+}
+# add names to the adjusted R square values list
+names(rsq.75) <- mods.names
+rsqdf.75 <- enframe(rsq.75, name = "Modnames", value = "Rsq") %>% unnest(cols = c("Modnames", "Rsq"))
+
+rsqdf.75$Modnames <- as_factor(rsqdf.75$Modnames)
+
+# save the now complete AIC table as new objec
+acruNPaicRsq.75 <- acruNP_aicctab.75 %>% merge(., rsqdf.75) %>% arrange(., Delta_AICc)  
+
+# Generate publication quality AIC table
+gt(acruNPaicRsq.75) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Red Maple N:P - 75% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+```
+
+### Blueberry N:P  {.tabset .tabset-fade .tabset-pills}
+
+Click on each tab to see the summary and diagnostic plots for each model.
+
+#### Intercept-only
+```{r 75-VAAN-NP-null, echo=TRUE, tidy=TRUE}
+# 4. Blueberry NP mean
+vaannpnull.75 <- lm(HRsize ~ 1, data = hare.rich.75)
+
+summary(vaannpnull.75)
+```
+
+#### Mean-only
+```{r 75-VAAN-NP-only, echo=TRUE, tidy=TRUE}
+# 4. Blueberry NP mean
+vaanNPhr.75 <- lm(HRsize ~ VAAN_NP_mean, data = hare.rich.75)
+
+summary(vaanNPhr.75)
+```
+
+*Diagnostic plots*
+```{r 75-VAAN-NP-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+
+gg_diagnose(vaanNPhr.75, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r 75-data-vs-pred-vaannp-1, echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+hare.predplot <- augment(vaanNPhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+
+ggplot(hare.predplot, aes(x = VAAN_NP_mean, y = HRsize)) +
+  geom_segment(aes(xend = VAAN_NP_mean, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("Average Blueberry N:P") +
+  ylab("Home Range size (ha)") +
+  ggtitle("75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  theme_few()
+```
+
+#### Coeff. Var.-only
+```{r 75-VAAN-NP-cv-only, echo=TRUE, tidy=TRUE}
+vaanNPcvhr.75 <- lm(HRsize ~ VAAN_NP_CVar, data = hare.rich.75)
+
+summary(vaanNPcvhr.75)
+```
+
+*Diagnostic plots*
+```{r 75-VAAN-NP-cv-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(vaanNPcvhr.75, theme = theme_classic())
+```
+
+#### Mean + Weight
+```{r 75-VAAN-NP-multi,echo=TRUE,tidy=TRUE}
+vaanNPhr.exp.75 <- lm(HRsize ~ VAAN_NP_mean + WeightSSH_g, data = hare.rich.75)
+
+summary(vaanNPhr.exp.75)
+
+# confint(vaanNPhr.exp.75)
+```
+
+*Diagnostic Plots*
+```{r 75-VAAN-NP-multi-diag,echo=TRUE,tidy=TRUE}
+gg_diagnose(vaanNPhr.exp.75, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r 75-data-vs-pred-vaannp-2, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(vaanNPhr.exp.75, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `VAAN_NP_mean` = "Average Blueberry N:P",
+  `WeightSSH_g` = "Snowshoe hare body weight (g)"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha) - 75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_grid(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names)) + 
+  theme_few()
+```
+
+#### Coeff. Var. + Weight
+```{r 75-VAAN-NP-multi-cv,echo=TRUE,tidy=TRUE}
+vaanNPcv.exp.75 <- lm(HRsize ~ VAAN_NP_CVar + WeightSSH_g, data = hare.rich.75)
+
+summary(vaanNPcv.exp.75)
+```
+
+*Diagnostic Plots*
+```{r 75-VAAN-NP-multi-cv-diag,echo=TRUE,tidy=TRUE}
+gg_diagnose(vaanNPcv.exp.75, theme = theme_classic())
+```
+
+#### Mean + Coeff. Var.
+```{r 75-plus-stoich-vaannp-1, echo=TRUE, tidy=TRUE}
+vaannp.plus.75 <- lm(HRsize ~ VAAN_NP_mean+VAAN_NP_CVar, data = hare.rich.75)
+
+summary(vaannp.plus.75)
+
+# confint(vaannp.plus.75)
+```
+
+*Diagnostic Plots*
+```{r 75-p-vaannp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaannp.plus.75, theme = theme_classic())
+```
+
+#### Mean * Coeff. Var.
+```{r 75-joint-stoich-vaannp-2, echo=TRUE, tidy=TRUE}
+vaannp.joint.75 <- lm(HRsize ~ VAAN_NP_mean*VAAN_NP_CVar, data = hare.rich.75)
+
+summary(vaannp.joint.75)
+```
+
+*Diagnostic Plots*
+```{r 75-js-vaannp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaannp.joint.75, theme = theme_classic())
+```
+
+#### Mean + Coeff. Var. + Weight
+```{r 75-stoich-weight-vaannp-1, echo=TRUE, tidy=TRUE}
+vaannp.sw.75 <- lm(HRsize ~ VAAN_NP_mean+VAAN_NP_CVar+WeightSSH_g, data = hare.rich.75)
+
+summary(vaannp.sw.75)
+```
+
+*Diagnostic Plots*
+```{r 75-sw-vaannp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaannp.sw.75, theme = theme_classic())
+```
+
+#### Mean * Coeff. Var. + Weight
+```{r 75-jsw-stoich-vaannp-1, echo=TRUE, tidy=TRUE}
+vaannp.jsw.75 <- lm(HRsize ~ VAAN_NP_mean*VAAN_NP_CVar+WeightSSH_g, data = hare.rich.75)
+
+summary(vaannp.jsw.75)
+```
+
+*Diagnostic Plots*
+```{r 75-jsw-vaannp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaannp.jsw.75, theme = theme_classic())
+```
+
+
+#### AICc Table
+```{r 75-vaannp-aicc-tab, echo=TRUE, tidy=TRUE}
+mods.75 <- list()
+mods.75[[1]] <- vaanNPhr.75
+mods.75[[2]] <- vaanNPcvhr.75
+mods.75[[3]] <- vaanNPhr.exp.75
+mods.75[[4]] <- vaanNPcv.exp.75
+mods.75[[5]] <- vaannp.plus.75
+mods.75[[6]] <- vaannp.joint.75
+mods.75[[7]] <- vaannp.sw.75
+mods.75[[8]] <- vaannp.jsw.75
+mods.75[[9]] <- vaannpnull.75
+
+
+mods.names <- c("HRsize ~ Mean N:P", #1
+  "HRsize ~ N:P CV", #2
+  "HRsize ~ Mean N:P + Weight", #3
+  "HRsize ~ N:P CV + Weight", #4
+  "HRsize ~ Mean N:P + N:P CV", #5
+  "HRsize ~ Mean N:P * N:P CV", #6
+  "HRsize ~ Mean N:P + N:P CV + Weight", #7
+  "HRsize ~ Mean N:P * N:P CV + Weight", #8
+  "Intercept"
+)
+
+vaanNP_aicctab.75 <- aictab(mods.75, modnames = mods.names, second.ord = T, sort = T)
+
+# Allocate and populate a list of adjusted R square values following the same order as the best of model created up off
+rsq.75 <- list()
+for (i in 1:length(mods.75)) {
+  rsq.75[[i]] <- summary(mods.75[[i]])$r.squared
+}
+# add names to the adjusted R square values list
+names(rsq.75) <- mods.names
+rsqdf.75 <- enframe(rsq.75, name = "Modnames", value = "Rsq") %>% unnest(cols = c("Modnames", "Rsq"))
+
+rsqdf.75$Modnames <- as_factor(rsqdf.75$Modnames)
+
+# save now complete AICc table to a new object
+vaanNPaicRsq.75 <- vaanNP_aicctab.75 %>% merge(., rsqdf.75) %>% arrange(., Delta_AICc) 
+
+gt(vaanNPaicRsq.75) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Blueberry N:P - 75% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+```
+
+### Blueberry C:P  {.tabset .tabset-fade .tabset-pills}
+
+Click on each tab to see the summary and diagnostic plots for each model.
+
+#### Intercept-only
+```{r 75-VAAN-CP-null, echo=TRUE, tidy=TRUE}
+# 5. Blueberry CP mean
+vaancpnull.75 <- lm(HRsize ~ 1, data = hare.rich.75)
+
+summary(vaancpnull.75)
+```
+
+#### Mean-only
+```{r 75-VAAN-CP-only, echo=TRUE, tidy=TRUE}
+# 5. Blueberry CP mean
+vaanCPhr.75 <- lm(HRsize ~ VAAN_CP_mean, data = hare.rich.75)
+
+summary(vaanCPhr.75)
+
+confint(vaanCPhr.75)
+```
+
+*Diagnostic plots*
+```{r 75-VAAN-CP-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+
+gg_diagnose(vaanCPhr.75, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r 75-data-vs-pred-vaancp-1, echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+hare.predplot <- augment(vaanCPhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+
+ggplot(hare.predplot, aes(x = VAAN_CP_mean, y = HRsize)) +
+  geom_segment(aes(xend = VAAN_CP_mean, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("Average Blueberry C:P") +
+  ylab("Home Range size (ha)") +
+  ggtitle("75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  theme_few()
+```
+
+#### Coeff. Var.-only
+```{r 75-VAAN-CP-cv-only, echo=TRUE, tidy=TRUE}
+vaanCPcvhr.75 <- lm(HRsize ~ VAAN_CP_CVar, data = hare.rich.75)
+
+summary(vaanCPcvhr.75)
+```
+
+*Diagnostic plots*
+```{r 75-VAAN-CP-cv-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(vaanCPcvhr.75, theme = theme_classic())
+```
+
+#### Mean + Weight
+```{r 75-VAAN-CP-multi,echo=TRUE,tidy=TRUE}
+vaanCPhr.exp.75 <- lm(HRsize ~ VAAN_CP_mean + WeightSSH_g, data = hare.rich.75)
+
+summary(vaanCPhr.exp.75)
+
+confint(vaanCPhr.exp.75)
+```
+
+*Diagnostic Plots*
+```{r 75-VAAN-CP-multi-diag,echo=TRUE,tidy=TRUE}
+gg_diagnose(vaanCPhr.exp.75, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r 75-data-vs-pred-vaancp-2, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(vaanCPhr.exp.75, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `VAAN_CP_mean` = "Average Blueberry C:P",
+  `WeightSSH_g` = "Snowshoe hare body weight (g)"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha) - 75% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_grid(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names)) + 
+  theme_few()
+```
+
+#### Coeff. Var. + Weight
+```{r 75-VAAN-CP-multi-cv,echo=TRUE,tidy=TRUE}
+vaanCPcv.exp.75 <- lm(HRsize ~ VAAN_CP_CVar + WeightSSH_g, data = hare.rich.75)
+
+summary(vaanCPcv.exp.75)
+```
+
+*Diagnostic Plots*
+```{r 75-VAAN-CP-multi-cv-diag,echo=TRUE,tidy=TRUE}
+gg_diagnose(vaanCPcv.exp.75, theme = theme_classic())
+```
+
+#### Mean + Coeff. Var.
+```{r 75-plus-stoich-vaancp-1, echo=TRUE, tidy=TRUE}
+vaancp.plus.75 <- lm(HRsize ~ VAAN_CP_mean+VAAN_CP_CVar, data = hare.rich.75)
+
+summary(vaancp.plus.75)
+
+confint(vaancp.plus.75)
+```
+
+*Diagnostic Plots*
+```{r 75-p-vaancp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancp.plus.75, theme = theme_classic())
+```
+
+#### Mean * Coeff. Var.
+```{r 75-joint-stoich-vaancp-2, echo=TRUE, tidy=TRUE}
+vaancp.joint.75 <- lm(HRsize ~ VAAN_CP_mean*VAAN_CP_CVar, data = hare.rich.75)
+
+summary(vaancp.joint.75)
+```
+
+*Diagnostic Plots*
+```{r 75-js-vaancp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancp.joint.75, theme = theme_classic())
+```
+
+#### Mean + Coeff. Var. + Weight
+```{r 75-stoich-weight-vaancp-1, echo=TRUE, tidy=TRUE}
+vaancp.sw.75 <- lm(HRsize ~ VAAN_CP_mean+VAAN_CP_CVar+WeightSSH_g, data = hare.rich.75)
+
+summary(vaancp.sw.75)
+```
+
+*Diagnostic Plots*
+```{r 75-sw-vaancp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancp.sw.75, theme = theme_classic())
+```
+
+#### Mean * Coeff. Var. + Weight
+```{r 75-jsw-stoich-vaancp-1, echo=TRUE, tidy=TRUE}
+vaancp.jsw.75 <- lm(HRsize ~ VAAN_CP_mean*VAAN_CP_CVar+WeightSSH_g, data = hare.rich.75)
+
+summary(vaancp.jsw.75)
+```
+
+*Diagnostic Plots*
+```{r 75-jsw-vaancp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancp.jsw.75, theme = theme_classic())
+```
+
+#### AICc Table
+```{r 75-vaancp-aicc-tab, echo=TRUE, tidy=TRUE}
+mods.75 <- list()
+mods.75[[1]] <- vaanCPhr.75
+mods.75[[2]] <- vaanCPcvhr.75
+mods.75[[3]] <- vaanCPhr.exp.75
+mods.75[[4]] <- vaanCPcv.exp.75
+mods.75[[5]] <- vaancp.plus.75 
+mods.75[[6]] <- vaancp.joint.75
+mods.75[[7]] <- vaancp.sw.75
+mods.75[[8]] <- vaancp.jsw.75
+mods.75[[9]] <- vaancpnull.75
+ 
+mods.names <- c("HRsize ~ Mean C:P", #1
+  "HRsize ~ C:P CV", #2
+  "HRsize ~ Mean C:P + Weight", #3
+  "HRsize ~ C:P CV + Weight", #4
+  "HRsize ~ Mean C:P + C:P CV", #5
+  "HRsize ~ Mean C:P * C:P CV", #6
+  "HRsize ~ Mean C:P + C:P CV + Weight", #7
+  "HRsize ~ Mean C:P * C:P CV + Weight", #8
+  "Intercept"
+)
+
+vaanCP_aicctab.75 <- aictab(mods.75, modnames = mods.names, second.ord = T, sort = T)
+
+# Allocate and populate a list of adjusted R square values following the same order as the best of model created up off
+rsq.75 <- list()
+for (i in 1:length(mods.75)) {
+  rsq.75[[i]] <- summary(mods.75[[i]])$r.squared
+}
+
+# add names to the adjusted R square values list
+names(rsq.75) <- mods.names
+rsqdf.75 <- enframe(rsq.75, name = "Modnames", value = "Rsq") %>% unnest(cols = c("Modnames", "Rsq"))
+
+rsqdf.75$Modnames <- as_factor(rsqdf.75$Modnames)
+
+# save now complete AICc table to a new object
+vaanCPaicRsq.75 <- vaanCP_aicctab.75 %>% merge(., rsqdf.75) %>% arrange(., Delta_AICc) 
+
+gt(vaanCPaicRsq.75) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Blueberry C:P - 75% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+```
+
+### Table summary of AICc top models
+```{r 75-aicc-top-models, echo=TRUE, tidy=TRUE, warning=FALSE}
+top.mods.75 <- list()
+
+# BLueberry C:N ratio top models
+top.mods.75[[1]] <- vaanCNaicRsq.75[1,]
+top.mods.75[[2]] <- vaanCNaicRsq.75[5,]
+top.mods.75[[3]] <- vaanCNaicRsq.75[8,]
+top.mods.75[[4]] <- vaanCNaicRsq.75[9,]
+
+# Blueberry N:P ratio top models
+top.mods.75[[5]] <- vaanNPaicRsq.75[1,]
+
+# Blueberry C:P ratio top models
+top.mods.75[[6]] <- vaanCPaicRsq.75[1,]
+top.mods.75[[7]] <- vaanCPaicRsq.75[4,]
+
+# Red maple N:P ratio top models
+top.mods.75[[8]] <- acruNPaicRsq.75[1,] 
+
+# Red maple C:N ratio top models
+top.mods.75[[9]] <- acruCNaicRsq.75[1,]
+top.mods.75[[10]] <- acruCNaicRsq.75[2,]
+
+top.mods.75 %>% bind_rows() %>% 
+  gt() %>% fmt_number(columns = 3:9, decimals = 3) %>% 
+  tab_row_group(., group = "Blueberry C:N top models", rows = c(1:4)) %>% 
+  tab_row_group(., group = "Blueberry N:P top models", rows = c(5)) %>% 
+  tab_row_group(., group = "Bluberry C:P top models", rows = c(6,7)) %>% 
+  tab_row_group(., group = "Red Maple N:P top models", rows = c(8)) %>% 
+  tab_row_group(., group = "Red Maple C:N top models", rows = c(9,10)) %>% 
+  cols_hide(columns = vars(AICc, ModelLik, AICcWt, Cum.Wt)) %>% 
+  cols_label(Modnames = "Model", K = "K", Delta_AICc = html("&Delta;AICc"), 
+             LL ="LL", Rsq = html("R<sup>2</sup>"))
+```
+
+The table below includes a breakdown of the uninformative parameters we removed, 
+for each stoichiometric ratio-plant species pair. 
+
+Model group               Uninformative Parameters
+-------------------       --------------------------------
+Blueberry C:N ratio       Body Weight, Mean-CV interaction
+Blueberry N:P ratio       None
+BLueberry C:P ratio       Body Weight, CV
+Red maple N:P ratio       None
+Red maple C:N ratio       None

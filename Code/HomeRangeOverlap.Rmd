@@ -1,0 +1,578 @@
+---
+title: "Home Range Overlap"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+author: "Matteo Rizzuto"
+output:
+  rmdformats::html_clean:
+    self_contained: false
+    thumbnails: true
+    lightbox: true
+    gallery: true
+    highlight: tango
+    code_folding: hide
+    fig_width: 8
+    fig_height: 6
+    df_print: paged
+  pdf_document:
+    citation_package: biblatex
+    dev: pdf
+    fig_caption: true
+    fig_crop: TRUE
+    highlight: tango
+    keep_tex: true
+    latex_engine: pdflatex
+    toc: true
+    toc_depth: 2
+    number_sections: false
+    df_print: kable    
+fontsize: 11pt
+geometry: margin=1in
+documentclass: article    
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/ecology.csl
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r}
+# read the forest shapefile from the Land Cover geodatabase
+forest_gdb <- read_sf("../../Mapping", layer = "Forest")
+
+forest_reproj <- st_transform(forest_gdb, CRS("+init=epsg:32622"))
+
+forest_clip <- st_crop(forest_reproj, e)
+```
+
+
+## Utilization Distribution Overlap across years
+
+The code below allows us to assess the overlap in the kUD of the four
+individuals with 2 years each of telemetry sampling [@Fieberg2006]. `ctmm` 
+allows for assessing the overlap of two Utilization Distributions using the
+Bhattacharyya's affinity index (henceforth, `BA`). The function `overlap`
+computes the value of `BA` and return the overlap of the autocorrelated 
+kernel density estimators. The four hares had different collar frequencies 
+between sampling years:
+
+Eat Tag       Collar Frequency        Year
+-------       ----------------        ----
+A3769         149.653                 2018
+A3769         150.173                 2019
+A1698         149.053                 2018
+A1698         149.294                 2019
+A3719         149.535                 2017
+A3719         149.003                 2018
+A3769         149.274                 2018
+A3769         150.314                 2019
+
+In the code below, we first isolate the utilization distribution of the four 
+snowshoe hares for which we have two years of telemetry sampling, then apply
+the function `overlap`. We provide the results of this analysis in the SI Table 
+S4, so we report here only the code necessary to produce the table.
+
+### A1425
+
+```{r hr-overlap-A1425, echo=TRUE, tidy=TRUE}
+# create a list to store the two UDs
+A1425_uds <- list()
+
+# populate the list
+A1425_uds[[1]] <- homeRanges[['149.653']]
+A1425_uds[[2]] <- homeRanges[['150.173']]
+
+# assign names to list based on year of sampling
+names(A1425_uds) <- c("2018", "2019")
+
+# calculate UDs overlap with the Bhattacharyya's affinity index
+A1425_olap <- overlap(A1425_uds, level = 0.95, debias=TRUE)
+
+# visualize the array of results
+A1425_olap 
+
+# convert the array to a dataframe
+A1425_olap_df <- adply(A1425_olap, c(1,2)) %>% dplyr::rename(., UD1=X1, UD2=X2) %>% dplyr::select(., UD1, UD2, est) 
+
+A1425_olap_df$EarTag <- "A1425"
+```
+
+Now, let's visualize the overlap. The code below produces figure S3 in the 
+Supplementary Information; as such, we only provide the code top produce it here.
+
+```{r overlap-A1425-fig, echo=TRUE, tidy=TRUE}
+# extract the UD contours at 50%, 75%, and 90% isopleths
+A1425.50 <- lapply(1:length(A1425_uds), function(x) SpatialPolygonsDataFrame.UD(A1425_uds[[x]], level.UD=0.50, level = 0.95))
+
+A1425.75 <- lapply(1:length(A1425_uds), function(x) SpatialPolygonsDataFrame.UD(A1425_uds[[x]], level.UD=0.75, level = 0.95))
+
+A1425.90 <- lapply(1:length(A1425_uds), function(x) SpatialPolygonsDataFrame.UD(A1425_uds[[x]], level.UD=0.90, level = 0.95))
+
+# remove unnecessary polygons and rows, we are only interested in the real 
+# estimate not the 95% confidence intervals
+# 50%
+A1425.50[[1]]@polygons[c(1,3)] <- NULL
+A1425.50[[1]]@data$name[c(1,3)] <- NA
+A1425.50[[1]]@data <- drop_na(A1425.50[[1]]@data)
+A1425.50[[1]]@data$id <- "50%"
+A1425.50[[2]]@polygons[c(1,3)] <- NULL
+A1425.50[[2]]@data$name[c(1,3)] <- NA
+A1425.50[[2]]@data <- drop_na(A1425.50[[2]]@data)
+A1425.50[[2]]@data$id <- "50%"
+
+#75%
+A1425.75[[1]]@polygons[c(1,3)] <- NULL
+A1425.75[[1]]@data$name[c(1,3)] <- NA
+A1425.75[[1]]@data <- drop_na(A1425.75[[1]]@data)
+A1425.75[[1]]@data$id <- "75%"
+A1425.75[[2]]@polygons[c(1,3)] <- NULL
+A1425.75[[2]]@data$name[c(1,3)] <- NA
+A1425.75[[2]]@data <- drop_na(A1425.75[[2]]@data)
+A1425.75[[2]]@data$id <- "75%"
+
+#90%
+A1425.90[[1]]@polygons[c(1,3)] <- NULL
+A1425.90[[1]]@data$name[c(1,3)] <- NA
+A1425.90[[1]]@data <- drop_na(A1425.90[[1]]@data)
+A1425.90[[1]]@data$id <- "90%"
+A1425.90[[2]]@polygons[c(1,3)] <- NULL
+A1425.90[[2]]@data$name[c(1,3)] <- NA
+A1425.90[[2]]@data <- drop_na(A1425.90[[2]]@data)
+A1425.90[[2]]@data$id <- "90%"
+  
+# rbind UD estimates into a single SPDF
+A1425.2018 <- rbind(A1425.50[[1]], A1425.75[[1]], A1425.90[[1]])
+A1425.2019 <- rbind(A1425.50[[2]], A1425.75[[2]], A1425.90[[2]])
+
+# convert UD estimates to SpatialLinesDataFrame
+A1425.2018.cont <- as(A1425.2018, "SpatialLinesDataFrame")
+A1425.2019.cont <- as(A1425.2019, "SpatialLinesDataFrame")
+
+# convert home range contour lines to sf objects
+A1425.2018.contSf <- st_as_sf(A1425.2018.cont)
+A1425.2019.contSf <- st_as_sf(A1425.2019.cont)
+
+# create a dedicated bounding box for the map
+bbox_temp <- st_bbox(A1425.2018.contSf) # current bounding box
+    
+    xrange <- bbox_temp$xmax - bbox_temp$xmin # range of x values
+    yrange <- bbox_temp$ymax - bbox_temp$ymin # range of y values
+    
+    bbox_temp[1] <- bbox_temp[1] - (0.05 * xrange) # xmin - left
+    bbox_temp[3] <- bbox_temp[3] + (0.05 * xrange) # xmax - right
+    bbox_temp[2] <- bbox_temp[2] - (0.05 * yrange) # ymin - bottom
+    bbox_temp[4] <- bbox_temp[4] + (0.05 * yrange) # ymax - top
+    
+    bbox_temp <- bbox_temp %>%  # take the bounding box ...
+      st_as_sfc() # ... and make it a sf polygon
+
+# map it
+olapmap_A1425 <- 
+    tm_shape(forest_clip, bbox = bbox_temp) +
+        tm_borders(col = "grey") +
+    tm_shape(bl_grid_pts) +
+    tm_dots(size = 0.75, shape = 18, col = "red", alpha = 0.3) + # grid trap locs
+    tm_shape(A1425.2018.contSf) +
+    tm_lines(col = "id", palette = c("#a6611a", "#dfc27d"), title.col = " % 2018 UD", lwd = 2) +
+    tm_shape(A1425.2019.contSf) + 
+    tm_lines(col = "id", palette = c("#018571", "#80cdc1"), title.col = "% 2019 UD", lwd = 2) +
+    tm_compass(position = c("right", "top")) +
+    tm_scale_bar(width = 0.3, 
+                 text.size = 1.25,
+                 position = c("right", "bottom")) + 
+    tm_layout(legend.outside = TRUE, 
+              legend.outside.position = "right",
+              legend.text.size = 1.1,
+              legend.title.size = 1.25,
+              asp = 1,
+              frame = TRUE)
+    
+tmap_save(olapmap_A1425, filename = "../Results/A1425_overlap.pdf", dpi = 600) 
+```
+
+
+### A1698
+```{r hr-overlap-A1698, echo=TRUE, tidy=TRUE}
+# create a list to store the two UDs
+A1698_uds <- list()
+
+# populate the list
+A1698_uds[[1]] <- homeRanges[['149.053']]
+A1698_uds[[2]] <- homeRanges[['149.294']]
+
+# assign names to list based on year of sampling
+names(A1698_uds) <- c("2018", "2019")
+
+# calculate UDs overlap with the Bhattacharyya's affinity index
+A1698_olap <- overlap(A1698_uds, level = 0.95, debias=TRUE)
+
+# visualize the array of results
+A1698_olap 
+
+# convert the array to a dataframe
+A1698_olap_df <- adply(A1698_olap, c(1,2)) %>% dplyr::rename(., UD1=X1, UD2=X2) %>% dplyr::select(., UD1, UD2, est) 
+
+A1698_olap_df$EarTag <- "A1698"
+```
+
+Now, let's visualize the overlap. The code below produces figure S3 in the 
+Supplementary Information; as such, we only provide the code top produce it here.
+
+```{r overlap-A1698-fig, echo=TRUE, tidy=TRUE}
+# extract the UD contours at 50%, 75%, and 90% isopleths
+A1698.50 <- lapply(1:length(A1698_uds), function(x) SpatialPolygonsDataFrame.UD(A1698_uds[[x]], level.UD=0.50, level = 0.95))
+
+A1698.75 <- lapply(1:length(A1698_uds), function(x) SpatialPolygonsDataFrame.UD(A1698_uds[[x]], level.UD=0.75, level = 0.95))
+
+A1698.90 <- lapply(1:length(A1698_uds), function(x) SpatialPolygonsDataFrame.UD(A1698_uds[[x]], level.UD=0.90, level = 0.95))
+
+# remove unnecessary polygons and rows, we are only interested in the real 
+# estimate not the 95% confidence intervals
+# 50%
+A1698.50[[1]]@polygons[c(1,3)] <- NULL
+A1698.50[[1]]@data$name[c(1,3)] <- NA
+A1698.50[[1]]@data <- drop_na(A1698.50[[1]]@data)
+A1698.50[[1]]@data$id <- "50%"
+A1698.50[[2]]@polygons[c(1,3)] <- NULL
+A1698.50[[2]]@data$name[c(1,3)] <- NA
+A1698.50[[2]]@data <- drop_na(A1698.50[[2]]@data)
+A1698.50[[2]]@data$id <- "50%"
+
+#75%
+A1698.75[[1]]@polygons[c(1,3)] <- NULL
+A1698.75[[1]]@data$name[c(1,3)] <- NA
+A1698.75[[1]]@data <- drop_na(A1698.75[[1]]@data)
+A1698.75[[1]]@data$id <- "75%"
+A1698.75[[2]]@polygons[c(1,3)] <- NULL
+A1698.75[[2]]@data$name[c(1,3)] <- NA
+A1698.75[[2]]@data <- drop_na(A1698.75[[2]]@data)
+A1698.75[[2]]@data$id <- "75%"
+
+#90%
+A1698.90[[1]]@polygons[c(1,3)] <- NULL
+A1698.90[[1]]@data$name[c(1,3)] <- NA
+A1698.90[[1]]@data <- drop_na(A1698.90[[1]]@data)
+A1698.90[[1]]@data$id <- "90%"
+A1698.90[[2]]@polygons[c(1,3)] <- NULL
+A1698.90[[2]]@data$name[c(1,3)] <- NA
+A1698.90[[2]]@data <- drop_na(A1698.90[[2]]@data)
+A1698.90[[2]]@data$id <- "90%"
+  
+# rbind UD estimates into a single SPDF
+A1698.2018 <- rbind(A1698.50[[1]], A1698.75[[1]], A1698.90[[1]])
+A1698.2019 <- rbind(A1698.50[[2]], A1698.75[[2]], A1698.90[[2]])
+
+# convert UD estimates to SpatialLinesDataFrame
+A1698.2018.cont <- as(A1698.2018, "SpatialLinesDataFrame")
+A1698.2019.cont <- as(A1698.2019, "SpatialLinesDataFrame")
+
+# convert home range contour lines to sf objects
+A1698.2018.contSf <- st_as_sf(A1698.2018.cont)
+A1698.2019.contSf <- st_as_sf(A1698.2019.cont)
+
+# create a dedicated bounding box for the map
+bbox_temp <- st_bbox(A1698.2019.contSf) # current bounding box
+    
+    xrange <- bbox_temp$xmax - bbox_temp$xmin # range of x values
+    yrange <- bbox_temp$ymax - bbox_temp$ymin # range of y values
+    
+    bbox_temp[1] <- bbox_temp[1] - (0.05 * xrange) # xmin - left
+    bbox_temp[3] <- bbox_temp[3] + (0.05 * xrange) # xmax - right
+    bbox_temp[2] <- bbox_temp[2] - (0.05 * yrange) # ymin - bottom
+    bbox_temp[4] <- bbox_temp[4] + (0.05 * yrange) # ymax - top
+    
+    bbox_temp <- bbox_temp %>%  # take the bounding box ...
+      st_as_sfc() # ... and make it a sf polygon
+
+# map it
+olapmap_A1698 <- 
+    tm_shape(forest_clip, bbox = bbox_temp) +
+        tm_borders(col = "grey") +
+    tm_shape(bl_grid_pts) +
+    tm_dots(size = 0.75, shape = 18, col = "red", alpha = 0.3) + # grid trap locs
+    tm_shape(A1698.2018.contSf) + 
+    tm_lines(col = "id", palette = c("#a6611a", "#dfc27d"), title.col = " % 2018 UD", lwd = 2) +
+    tm_shape(A1698.2019.contSf, is.master = T) + 
+    tm_lines(col = "id", palette = c("#018571", "#80cdc1"), title.col = "% 2019 UD", lwd = 2) +
+    tm_compass(position = c("right", "top")) +
+    tm_scale_bar(width = 0.3, 
+                 text.size = 1.25,
+                 position = c("right", "bottom")) + 
+    tm_layout(legend.outside = TRUE, 
+              legend.outside.position = "right",
+              legend.text.size = 1.1,
+              legend.title.size = 1.25,
+              asp = 1,
+              frame = TRUE)
+    
+tmap_save(olapmap_A1698, filename = "../Results/A1698_overlap.pdf", dpi = 600)   
+```
+
+### A3719
+```{r hr-overlap-A3719, echo=TRUE, tidy=TRUE}
+# create a list to store the two UDs
+A3719_uds <- list()
+
+# populate the list
+A3719_uds[[1]] <- homeRanges[['149.535']]
+A3719_uds[[2]] <- homeRanges[['149.003']]
+
+# assign names to list based on year of sampling
+names(A3719_uds) <- c("2017", "2018")
+
+# calculate UDs overlap with the Bhattacharyya's affinity index
+A3719_olap <- overlap(A3719_uds, level = 0.95, debias=TRUE)
+A3719_olap
+
+# visualize the array of results
+A3719_olap 
+
+# convert the array to a dataframe
+A3719_olap_df <- adply(A3719_olap, c(1,2)) %>% dplyr::rename(., UD1=X1, UD2=X2) %>% dplyr::select(., UD1, UD2, est) 
+
+A3719_olap_df$EarTag <- "A3719"
+```
+
+Now, let's visualize the overlap. The code below produces figure S3 in the 
+Supplementary Information; as such, we only provide the code top produce it here.
+
+```{r overlap-A3719-fig, echo=TRUE, tidy=TRUE}
+# extract the UD contours at 50%, 75%, and 90% isopleths
+A3719.50 <- lapply(1:length(A3719_uds), function(x) SpatialPolygonsDataFrame.UD(A3719_uds[[x]], level.UD=0.50, level = 0.95))
+
+A3719.75 <- lapply(1:length(A3719_uds), function(x) SpatialPolygonsDataFrame.UD(A3719_uds[[x]], level.UD=0.75, level = 0.95))
+
+A3719.90 <- lapply(1:length(A3719_uds), function(x) SpatialPolygonsDataFrame.UD(A3719_uds[[x]], level.UD=0.90, level = 0.95))
+
+# remove unnecessary polygons and rows, we are only interested in the real 
+# estimate not the 95% confidence intervals
+# 50%
+A3719.50[[1]]@polygons[c(1,3)] <- NULL
+A3719.50[[1]]@data$name[c(1,3)] <- NA
+A3719.50[[1]]@data <- drop_na(A3719.50[[1]]@data)
+A3719.50[[1]]@data$id <- "50%"
+A3719.50[[2]]@polygons[c(1,3)] <- NULL
+A3719.50[[2]]@data$name[c(1,3)] <- NA
+A3719.50[[2]]@data <- drop_na(A3719.50[[2]]@data)
+A3719.50[[2]]@data$id <- "50%"
+
+#75%
+A3719.75[[1]]@polygons[c(1,3)] <- NULL
+A3719.75[[1]]@data$name[c(1,3)] <- NA
+A3719.75[[1]]@data <- drop_na(A3719.75[[1]]@data)
+A3719.75[[1]]@data$id <- "75%"
+A3719.75[[2]]@polygons[c(1,3)] <- NULL
+A3719.75[[2]]@data$name[c(1,3)] <- NA
+A3719.75[[2]]@data <- drop_na(A3719.75[[2]]@data)
+A3719.75[[2]]@data$id <- "75%"
+
+#90%
+A3719.90[[1]]@polygons[c(1,3)] <- NULL
+A3719.90[[1]]@data$name[c(1,3)] <- NA
+A3719.90[[1]]@data <- drop_na(A3719.90[[1]]@data)
+A3719.90[[1]]@data$id <- "90%"
+A3719.90[[2]]@polygons[c(1,3)] <- NULL
+A3719.90[[2]]@data$name[c(1,3)] <- NA
+A3719.90[[2]]@data <- drop_na(A3719.90[[2]]@data)
+A3719.90[[2]]@data$id <- "90%"
+  
+# rbind UD estimates into a single SPDF
+A3719.2017 <- rbind(A3719.50[[1]], A3719.75[[1]], A3719.90[[1]])
+A3719.2018 <- rbind(A3719.50[[2]], A3719.75[[2]], A3719.90[[2]])
+
+# convert UD estimates to SpatialLinesDataFrame
+A3719.2017.cont <- as(A3719.2017, "SpatialLinesDataFrame")
+A3719.2018.cont <- as(A3719.2018, "SpatialLinesDataFrame")
+
+# convert home range contour lines to sf objects
+A3719.2017.contSf <- st_as_sf(A3719.2017.cont)
+A3719.2018.contSf <- st_as_sf(A3719.2018.cont)
+
+# create a dedicated bounding box for the map
+bbox_temp <- st_bbox(A3719.2018.contSf) # current bounding box
+    
+    xrange <- bbox_temp$xmax - bbox_temp$xmin # range of x values
+    yrange <- bbox_temp$ymax - bbox_temp$ymin # range of y values
+    
+    bbox_temp[1] <- bbox_temp[1] - (0.05 * xrange) # xmin - left
+    bbox_temp[3] <- bbox_temp[3] + (0.05 * xrange) # xmax - right
+    bbox_temp[2] <- bbox_temp[2] - (0.05 * yrange) # ymin - bottom
+    bbox_temp[4] <- bbox_temp[4] + (0.05 * yrange) # ymax - top
+    
+    bbox_temp <- bbox_temp %>%  # take the bounding box ...
+      st_as_sfc() # ... and make it a sf polygon
+
+# map it
+olapmap_A3719 <- 
+    tm_shape(forest_clip, bbox = bbox_temp) +
+        tm_borders(col = "grey") +
+    tm_shape(bl_grid_pts) +
+    tm_dots(size = 0.75, shape = 18, col = "red", alpha = 0.3) + # grid trap locs
+    tm_shape(A3719.2017.contSf) + 
+    tm_lines(col = "id", palette = c("#a6611a", "#dfc27d"), title.col = " % 2017 UD", lwd = 2) +
+    tm_shape(A3719.2018.contSf, is.master = TRUE) + 
+    tm_lines(col = "id", palette = c("#018571", "#80cdc1"), title.col = "% 2018 UD", lwd = 2) +
+    tm_compass(position = c("right", "top")) +
+    tm_scale_bar(width = 0.3, 
+                 text.size = 1.25,
+                 position = c("right", "bottom")) + 
+    tm_layout(
+              # main.title = paste("Collar Frequency:", loopCIDs[i]),
+              # title = paste("Ear tag:", dots.temp$EarTag),
+              legend.outside = TRUE, 
+              legend.outside.position = "right",
+              legend.text.size = 1.1,
+              legend.title.size = 1.25,
+              asp = 1,
+              frame = TRUE)
+    
+tmap_save(olapmap_A3719, filename = "../Results/A3719_overlap.pdf", dpi = 600)
+```
+
+### A3769
+```{r hr-overlap-A3769, echo=TRUE, tidy=TRUE}
+# create a list to store the two UDs
+A3769_uds <- list()
+
+# populate the list
+A3769_uds[[1]] <- homeRanges[['149.274']]
+A3769_uds[[2]] <- homeRanges[['150.314']]
+
+# assign names to list based on year of sampling
+names(A3769_uds) <- c("2018", "2019")
+
+# calculate UDs overlap with the Bhattacharyya's affinity index
+A3769_olap <- overlap(A3769_uds, level = 0.95, debias=TRUE)
+
+# visualzie the array of results
+A3769_olap
+
+# convert the array to a dataframe
+A3769_olap_df <- adply(A3769_olap, c(1,2)) %>% dplyr::rename(., UD1=X1, UD2=X2) %>% dplyr::select(., UD1, UD2, est) 
+
+A3769_olap_df$EarTag <- "A3769"
+```
+
+Now, let's visualize the overlap. The code below produces figure S3 in the 
+Supplementary Information; as such, we only provide the code top produce it here.
+
+```{r overlap-A3769-fig, echo=TRUE, tidy=TRUE}
+# extract the UD contours at 50%, 75%, and 90% isopleths
+A3769.50 <- lapply(1:length(A3769_uds), function(x) SpatialPolygonsDataFrame.UD(A3769_uds[[x]], level.UD=0.50, level = 0.95))
+
+A3769.75 <- lapply(1:length(A3769_uds), function(x) SpatialPolygonsDataFrame.UD(A3769_uds[[x]], level.UD=0.75, level = 0.95))
+
+A3769.90 <- lapply(1:length(A3769_uds), function(x) SpatialPolygonsDataFrame.UD(A3769_uds[[x]], level.UD=0.90, level = 0.95))
+
+# remove unnecessary polygons and rows, we are only interested in the real 
+# estimate not the 95% confidence intervals
+# 50%
+A3769.50[[1]]@polygons[c(1,3)] <- NULL
+A3769.50[[1]]@data$name[c(1,3)] <- NA
+A3769.50[[1]]@data <- drop_na(A3769.50[[1]]@data)
+A3769.50[[1]]@data$id <- "50%"
+A3769.50[[2]]@polygons[c(1,3)] <- NULL
+A3769.50[[2]]@data$name[c(1,3)] <- NA
+A3769.50[[2]]@data <- drop_na(A3769.50[[2]]@data)
+A3769.50[[2]]@data$id <- "50%"
+
+#75%
+A3769.75[[1]]@polygons[c(1,3)] <- NULL
+A3769.75[[1]]@data$name[c(1,3)] <- NA
+A3769.75[[1]]@data <- drop_na(A3769.75[[1]]@data)
+A3769.75[[1]]@data$id <- "75%"
+A3769.75[[2]]@polygons[c(1,3)] <- NULL
+A3769.75[[2]]@data$name[c(1,3)] <- NA
+A3769.75[[2]]@data <- drop_na(A3769.75[[2]]@data)
+A3769.75[[2]]@data$id <- "75%"
+
+#90%
+A3769.90[[1]]@polygons[c(1,3)] <- NULL
+A3769.90[[1]]@data$name[c(1,3)] <- NA
+A3769.90[[1]]@data <- drop_na(A3769.90[[1]]@data)
+A3769.90[[1]]@data$id <- "90%"
+A3769.90[[2]]@polygons[c(1,3)] <- NULL
+A3769.90[[2]]@data$name[c(1,3)] <- NA
+A3769.90[[2]]@data <- drop_na(A3769.90[[2]]@data)
+A3769.90[[2]]@data$id <- "90%"
+  
+# rbind UD estimates into a single SPDF
+A3769.2018 <- rbind(A3769.50[[1]], A3769.75[[1]], A3769.90[[1]])
+A3769.2019 <- rbind(A3769.50[[2]], A3769.75[[2]], A3769.90[[2]])
+
+# convert UD estimates to SpatialLinesDataFrame
+A3769.2018.cont <- as(A3769.2018, "SpatialLinesDataFrame")
+A3769.2019.cont <- as(A3769.2019, "SpatialLinesDataFrame")
+
+# convert home range contour lines to sf objects
+A3769.2018.contSf <- st_as_sf(A3769.2018.cont)
+A3769.2019.contSf <- st_as_sf(A3769.2019.cont)
+
+# create a dedicated bounding box for the map
+bbox_temp <- st_bbox(A3769.2018.contSf) # current bounding box
+    
+    xrange <- bbox_temp$xmax - bbox_temp$xmin # range of x values
+    yrange <- bbox_temp$ymax - bbox_temp$ymin # range of y values
+    
+    bbox_temp[1] <- bbox_temp[1] - (0.05 * xrange) # xmin - left
+    bbox_temp[3] <- bbox_temp[3] + (0.05 * xrange) # xmax - right
+    bbox_temp[2] <- bbox_temp[2] - (0.05 * yrange) # ymin - bottom
+    bbox_temp[4] <- bbox_temp[4] + (0.05 * yrange) # ymax - top
+    
+    bbox_temp <- bbox_temp %>%  # take the bounding box ...
+      st_as_sfc() # ... and make it a sf polygon
+
+# map it
+olapmap_A3769 <- 
+    tm_shape(forest_clip, bbox = bbox_temp) +
+        tm_borders(col = "grey") +
+    tm_shape(bl_grid_pts) +
+    tm_dots(size = 0.75, shape = 18, col = "red", alpha = 0.3) + # grid trap locs
+    tm_shape(A3769.2018.contSf) + 
+    tm_lines(col = "id", palette = c("#a6611a", "#dfc27d"), title.col = " % 2018 UD", lwd = 2) +
+    tm_shape(A3769.2019.contSf) + 
+    tm_lines(col = "id", palette = c("#018571", "#80cdc1"), title.col = "% 2019 UD", lwd = 2) +
+    tm_compass(position = c("right", "top")) +
+    tm_scale_bar(width = 0.3, 
+                 text.size = 1.25,
+                 position = c("right", "bottom")) + 
+    tm_layout(
+              # main.title = paste("Collar Frequency:", loopCIDs[i]),
+              # title = paste("Ear tag:", dots.temp$EarTag),
+              legend.outside = TRUE, 
+              legend.outside.position = "right",
+              legend.text.size = 1.1,
+              legend.title.size = 1.25,
+              asp = 1,
+              frame = TRUE)
+    
+tmap_save(olapmap_A3769, filename = "../Results/A3769_overlap.pdf", dpi = 600)
+```
+
+### Summary Table
+
+The code chunk produces Table S3 in the Supplementary Information. As in other
+such cases, we provide here only the code to produce the table and refer readers
+to the SI to see the output.
+
+```{r olap-table, tidy=TRUE, results='hide'}
+olap <- dplyr::full_join(A1425_olap_df,A1698_olap_df) %>% dplyr::full_join(., A3719_olap_df) %>% dplyr::full_join(., A3769_olap_df) %>% dplyr::rename(., `Bhattacharyya Index` = est)
+
+kable(olap[, 1:3]) %>%  group_rows(index = setNames(rle(olap$EarTag)[[1]], 
+                                                    rle(olap$EarTag)[[2]])) %>%
+   kable_styling(bootstrap_options = c("hover", "condensed"), 
+                 fixed_thead = TRUE) %>% 
+   scroll_box(width = "100%", height = "100%")
+
+olap_tab <- gt(olap) %>% 
+  fmt_number(., columns = 3, decimals = 3) %>% 
+  tab_row_group(., group = "A3769", rows = c(13:16)) %>% 
+  tab_row_group(., group = "A3719", rows = c(9:12)) %>% 
+  tab_row_group(., group = "A1698", rows = c(5:8)) %>% 
+  tab_row_group(., group = "A1425", rows = c(1:4)) %>% 
+  cols_hide(., columns = vars(EarTag))
+
+gtsave(olap_tab, filename = "OverlapTab.tex", path = "../Results")
+
+# gtsave(olap_tab, filename = "OverlapTab.rtf", path = "../Results")
+```
+
+

@@ -1,0 +1,477 @@
+---
+title: "Triangulation Error analyses with razimuth"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+author: "Matteo Rizzuto"
+output:
+  rmdformats::html_clean:
+    self_contained: false
+    thumbnails: true
+    lightbox: true
+    gallery: true
+    highlight: tango
+    code_folding: hide
+    fig_width: 8
+    fig_height: 6
+    df_print: paged
+  pdf_document:
+    citation_package: biblatex
+    dev: pdf
+    fig_caption: true
+    fig_crop: TRUE
+    highlight: tango
+    keep_tex: true
+    latex_engine: pdflatex
+    toc: true
+    toc_depth: 2
+    number_sections: false
+    df_print: kable    
+fontsize: 11pt
+geometry: margin=1in
+documentclass: article    
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/ecology.csl
+editor_options: 
+  chunk_output_type: inline
+---
+
+Here, we investigate the average error in azimuthal data collection for 
+two of our observers involved in the telemetry sampling of our snowshoe hares.
+We use package `razimuth` to estimate the location of test collars and then
+measure the distance between the estimated and true locations using function 
+`st_distance` from the `sf` package.
+
+## Rationale
+
+In 2017, a single observer performed all triangulations on the four 
+radio-collared snowshoe hares active on our trapping grid. In 2018 and 2019, due
+to an increase in both the number of collared hares active on the grid and in 
+the workforce available, we had two or three observers simultaneously collecting 
+azimuths on each collar. This approach allowed for quicker azimuthal sampling 
+for each triangulation bout and also for improved accuracy.
+
+Here, we report the data and code used to estimate the accuracy of our lone 
+observer in 2017 (MR) and of one of the observers in 2018 (Mr. Benjamin 
+Stratton). During the lead-up to the 2017 and 2018 telemetry sampling seasons, 
+we conducted 6 days of error reduction exercises with MR in 2017, and 7 days of 
+error reduction exercises with BS in 2018. During each error reduction session, 
+the observer would attempt to locate a variable number of collars (n=1-7) 
+hidden in advance by a collaborator. In 2017, these exercises took place on the 
+trapping grid itself, alongside other sampling activities. In 2018, exercises 
+took place in Pippy Park, a large natural area in St. John’s, NL, whose 
+vegetation and topography closely resemble the grid itself.
+
+### Data Loading and Wrangling
+
+We begin by loading the error reduction exercises data, checking the structure
+of each file, and removing NAs.
+
+```{r error-data-load, echo=TRUE, tidy=TRUE}
+# load the error trials data
+trialData_2017 <- read.csv("../Data/MR_ErrorReduction.csv")
+trialData_2018 <- read.csv("../Data/BS_ErrorReduction.csv")
+
+# remove azimuthal NAs
+trialData_2017 <- drop_na(trialData_2017, Azimuth)
+trialData_2018 <- drop_na(trialData_2018, Azimuth)
+
+# check structure pre-merge
+head(trialData_2017)
+head(trialData_2018)
+
+# remove unnecessary columns
+trialData_2018 <- trialData_2018[, -1]
+# head(trialData_2018)
+```
+
+We are going to reproject these data to an up to date datum.
+
+```{r error-data-crs-conversion, echo=TRUE, tidy=TRUE}
+# convert all of them to meters
+ 
+trialData_2017 <- drop_na(trialData_2017, Easting)
+coordinates(trialData_2017) <- c("Easting", "Northing")
+proj4string(trialData_2017) <- CRS("+init=epsg:32622")
+
+trialData_2017 <- spTransform(trialData_2017, CRS("+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m +no_defs"))
+trialData_2017 <- as.data.frame(trialData_2017)
+trialData_2017$UTMZone <- as.integer(22)
+
+trialData_2018 <- drop_na(trialData_2018, Easting)
+coordinates(trialData_2018) <- c("Easting", "Northing")
+proj4string(trialData_2018) <- CRS("+init=epsg:32622")
+
+trialData_2018 <- spTransform(trialData_2018, CRS("+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m +no_defs"))
+trialData_2018 <- as.data.frame(trialData_2018)
+trialData_2018$UTMZone <- as.integer(22)
+```
+
+`razimuth` requires a column containing the maximum distance between a 
+transmitter and a receiver. In 2017, as all trials took place on the snowshoe 
+hare live trapping grid but not beyond it, we estimate the maximum distance `r` 
+to be 500 m. In 2018, when the trials took place in the Pippy Park natural area 
+in St. John's, NL, we estimate `r` to be 750 m. The code below adds the column 
+`prior_r` that stores this information to the two error reduction datasets.
+
+```{r error-trials-max-dist, echo=TRUE,tidy=TRUE}
+# add column of prior_r. This is the maximum distance (m) between observer and 
+# transmitter prior to taking the azimuth. If this was not obtained during data 
+# collection, still need to have an upper bound for each azimuth BL grid is 500 
+# m wide and test collars were not placed outside of it. So max distance away 
+# would be approximately 500 m. Setting this for every row in trialData_2017.
+
+trialData_2017 <- trialData_2017 %>%
+  add_column(prior_r = 500)
+
+# In Pippy Park, St. John's NL, trials were at times done from one side of Long 
+# Pond to the opposite side, or from the trail leading to the Mt Scio Hill Top. 
+# This distance can be around 750 m, so we will set 750 m as our maximum 
+# distance for the trials run in 2018.
+
+trialData_2018 <- trialData_2018 %>%
+  add_column(prior_r = 750)
+```
+
+Now, let's join the two error trial datasets into a new object called `trialData`.
+
+```{r dataset-join, echo=TRUE, tidy=TRUE}
+# check a join could work
+dplyr::anti_join(trialData_2017, trialData_2018)
+
+# join the two datasets and remove unused levels
+trialData <- full_join(trialData_2017, trialData_2018) 
+trialData <- droplevels(trialData)
+
+trialData
+```
+
+We will now assign a unique group identifier (GID) to each set of triangulations,
+that is, the group of azimuths collected when triangulating a given test collar
+on a given day. To do this, we will first create a new column, `ID`, that 
+uniquely identifies collars across years: this is required as some test collars
+were used in multiple years. We will also break down the column `Date` in its
+individual components `Year`, `Month`, `Day`. After these two changes to the 
+dataset, we will use a loop with nested `if` conditions to assign the GID. 
+Finally we will store the new dataset in an object called `erData`.
+
+```{r error-gid-assignement, echo=TRUE, tidy=TRUE}
+# break down "Date" column to its individual components but keep it in the dataset
+# then create a new column to uniquely identify collars between years
+trialData <- trialData %>% 
+  separate(., "Date", c("Year", "Month", "Day"), sep = "-", remove = FALSE) %>% 
+  unite(., ID, c("Frequency", "Year"), sep = "_", remove = FALSE)  
+
+# isolate the IDs of each data entry, i.e. its unique Frequency
+IDs <- trialData$ID 
+
+# extract unique ID values, this vector will be used multiple time to index 
+# loops
+UniqIDs <- unique(IDs)
+
+# create column names for new df
+OutputFields <- c(paste(colnames(trialData)), "GID") 
+
+# add GID column to original data
+trialData$GID <- NA    
+trialData$GID <- as.factor(trialData$GID)
+
+# create new df, name stands for "error reduction Data"
+erData <- trialData[FALSE,] 
+
+# remove useless GID column from original dataset
+trialData$GID <- NULL 
+
+# The following loop scans the data for groups of azimuths 
+# obtained for each collar on each day of triangulation, and assigns a GID 
+# based on the date of collection.
+
+for (i in 1:length(UniqIDs)){
+  # first, create a temporary dataset to host each Frequency's data in turn
+  TmpInds <- which(IDs == UniqIDs[i]) 
+  TmpData <- trialData[TmpInds,]   
+  # assign a starting GID
+  TmpData[1, "GID"] <- 1 
+  for (j in 1:(nrow(TmpData) - 1)){
+    # if the Date does not change, we want the GID to stay the same
+      if (TmpData[j + 1, "Date"] == TmpData[j, "Date"]){
+        TmpData[j + 1, "GID"] <- TmpData[j, "GID"]
+      }
+      else {
+        # if the Date changes, we want the GID to increase accordingly
+        TmpData[j + 1, "GID"] <- TmpData[j, "GID"] + 1
+      }
+  }
+  # browser()
+  # bind each temp dataset into a new one
+  erData <- rbind(erData, TmpData) 
+}
+
+erData$GID <- as.factor(erData$GID)
+erData$Time <- as.numeric(erData$Time)
+```
+
+`razimuth` requires the information on the day and time when an azimuth was
+collected to be stored in a column with format `YYYY-MM-DD HH:MM:SS`. The code 
+chunk below takes care of this requirement.
+
+```{r error-date-format, echo=TRUE, tidy=TRUE}
+# add a column that has date and time for razimuth package
+erData <- add_column(erData, datetime = as.POSIXct(paste(erData$Date, erData$Time_O), format="%Y-%m-%d %H:%M:%S", tz = "America/St_Johns", usetz = TRUE)) 
+head(erData)
+# select only those columns necessary for ATM calculation
+erData <- erData %>%
+  dplyr::select(., c(-Alive, -Point, -GID_O, -UTM_Zone, -Time, -Wind, -Rain, -Temperature, -Clouds)) %>% dplyr::select(., ID, GID, Frequency, datetime, Azimuth, prior_r, Line, Observer, TrueLoc, Easting:UTMZone, Date:Time_O, Notes)
+# rename columns to appropriate headers for ATM calculation
+erData <- erData %>%
+  dplyr::rename(indiv = ID, obs_id = GID, azimuth = Azimuth, date = datetime, utm_x = Easting, utm_y = Northing)
+```
+
+Now, we are going to convert the `erData` dataframe to a list of `atm` objects
+using the `convert_atm` function. We then look at the geometry of each
+triangulation attempt using the `visualize_atm` function. 
+
+```{r atm-prep-and-vis, echo=TRUE,tidy=TRUE, message=FALSE}
+# AR helped with this code - github.com/robitalec
+# For all individuals 
+# Unique individuals
+eruids <- unique(erData$indiv)
+
+## Convert all to atm
+# Loop through 'em
+erlsatms <- lapply(eruids, function(id) convert_atm(df = erData[erData$indiv == id,]))
+
+# Name the list for downstream
+names(erlsatms) <- eruids
+
+## Visualize all and save all in folder
+lapply(seq_along(erlsatms), function(x) {
+  # first create an object to store the path to the saving location and the saved object's name
+  # we want to save in '../Results/Init_Triangd"
+  # we also want to save each plot in a single multipage PDF file, names after
+  # the collar being visualized 
+  mypath <- file.path("..","Results", "Error_Triangd",paste("error_init_triangulation_", names(erlsatms)[[x]],
+                                                           ".pdf", sep = ""))
+  # now start the printing device
+  pdf(mypath)
+  # call a new plot
+  plot.new()
+  # set the file's name, i.e. the collar frequency, which will appear on the first page of the PDF
+  mtext(names(erlsatms)[[x]])
+  # now loop through the collar's relocations, one at the time, and plot its geometry
+  lapply(erlsatms[[x]]$pid, function(i) visualize_atm(erlsatms[[x]], obs_id = i, add_prior = TRUE))
+  # turn off the printing device
+  invisible(dev.off())
+})
+```
+
+## Azimuthal Telemetry Model fitting
+
+`razimuth` performs triangulation and error ellipses estimation around each 
+location using an Azimuthal Telemetry Model (ATM; @Gerber2018). The ATM uses a 
+Markov Chain Monte Carlo algorithm to iteratively estimate the location of a 
+collar based on the azimuthal data over multiple time step. 
+
+> **Note**: This step can be *quite* time consuming and computationally 
+intensive. On a machine with a Quad-Core Intel Core i7 2.5 GHz with 16 Gb RAM, 
+it took about **XXX hours**. Please, allocate as much or more time to complete 
+running or compiling this code chunk, depending on your hardware configuration. 
+
+> We provide a pre-generated `.rds` file to load in your R code if you do not 
+want or cannot run this portion of the code. The pre-generated file can be 
+found here: 
+`../Results/razimuth_errorT_lsfits.rds`
+
+```{r error-atm-fit, echo=TRUE, tidy=TRUE}
+tictoc::tic() # start timing how long it will take to run
+# Model all
+erlsfits <- lapply(erlsatms, atm_mcmc, n_mcmc = 10000, n_burn = 1000)
+tictoc::toc() # return total run time
+```
+
+Given the extremely long runtime of the above code chunk, saving its output is a
+good idea to save time in future iterations of this notebook.
+
+```{r error-atm-fits-save, echo=TRUE, tidy=TRUE, message=FALSE, results="hide"}
+# save the resulting model fits as and .rds object
+# this step allows us to not run the whole code each time, instead
+# skipping ahead of the most computational intensive part
+erlsfits <- saveRDS(erlsfits, "../Results/razimuth_errorT_lsfits.rds")
+```
+
+### Visual check of the triangulations
+
+Now, let's load the model fits and visualize the output of the ATM, with the errors.
+
+```{r error-atm-fits-loading, echo=TRUE,tidy=TRUE}
+erlsfits <- readRDS("../Results/razimuth_errorT_lsfits.rds")
+```
+
+First, we plot each triangulations with its associated error ellipses, 
+error estimates, and posterior-estimated location of the collar. As before, 
+to accommodate the large number of plots produced by the following code chunk,
+we are going to save them in a dedicate folder, `Post_Triangd`, under `Results`.
+
+```{r error-trials-atm-error-vis, echo=TRUE, tidy=TRUE, message=FALSE, results="hide"}
+# Visualize all with error
+lapply(seq_along(erlsatms), function(x) {
+  mypath <- file.path("..","Results", "Error_Triangd",paste("error_post_triangulation_", names(erlsatms)[[x]],
+                                                           ".pdf", sep = ""))
+  pdf(mypath)
+  print(plot.new())
+  mtext(names(erlsatms)[[x]])
+  lapply(erlsatms[[x]]$pid, plyr::failwith(NULL, function(i) {
+    visualize_atm(erlsatms[[x]], obs_id = i, add_prior = TRUE)
+    p_isopleth(df = erlsfits[[x]]$mu_ls[[i]]$pdraws, prob_lvls = c(0.95), range_extend = 0,
+               kde_n = 50, col_vec = c(4,4))
+    points(matrix(erlsfits[[x]]$pmode[i, 2:3], ncol = 2), pch = 21, bg = 4)
+    legend("topleft", c("Posterior Mode"), pch = 21, pt.bg = 4, bty = "n")
+  }
+  ))
+  invisible(dev.off())
+})
+```
+
+A way to assess how good the fit of the ATM to our data was is to plot the
+values of the parameter kappa over each iteration. We can do this in two ways:
+either in a traceplot, which shows the variation in the value of kappa, or as a 
+running mean, which show the change in the mean value of kappa over each 
+iteration. First, let's look at the traceplot for kappa. Here, we are looking for
+a plot in which the peaks and pits are, in general, about the same width.
+
+``` {r error-kappa-convergence-check-1, echo=TRUE, tidy=TRUE}
+# check convergence ----
+# pdf('graphics/traceplot.pdf')
+lapply(seq_along(erlsfits), function(x) {
+  plot.new()
+  mtext(names(erlsfits)[[x]])
+  plot_kappa(atm_obj = erlsfits[[x]]$kappa_ls, item = "traceplot")
+})
+# dev.off()
+```
+
+And here we plot the running mean of kappa. In this case, we are looking for 
+a line that eventually flattens out. 
+
+```{R error-kappa-convergence-check-2, echo=TRUE, tidy=TRUE}
+# pdf('graphics/runmean.pdf')
+lapply(seq_along(erlsfits), function(x) {
+  plot.new()
+  mtext(names(erlsfits)[[x]])
+  plot_kappa(atm_obj = erlsfits[[x]]$kappa_ls, item = "run_mean")
+})
+# dev.off()
+```
+
+### Data Error Extraction
+
+Now that the triangulation is complete, what is left to do is to extract the
+variances associated with each relocation to use them with `ctmm` to estimate 
+and error-corrected home range size.
+
+```{r error-vars-extract, echo=TRUE, tidy=TRUE}
+## Extract variances to use in ctmm
+erlsvars <- lapply(seq_along(erlsfits), function(x) {
+  rbindlist(lapply(erlsfits[[x]]$mu_ls, function(y) {
+    xy <- y[['pdraws']]
+    data.table(COVt.x.y = var(x=xy[,1], y=xy[,2]), pid = y[['pid']], 
+               COV.x.x = var(xy[, 1]), COV.y.y = var(xy[, 2]))
+  }))[, id := names(erlsfits)[[x]]]
+})
+
+# bind into a list
+errorTrials.vars <- rbindlist(erlsvars)
+```
+
+We now create a new dataframe that contains the relocations, collar IDs, and 
+variances from `atm_mcmc()`.
+
+```{r echo=TRUE,tidy=TRUE}
+# create a dataframe with relocations, IDs, and variances 
+# extract relocation data
+erlsreloc <- lapply(seq_along(erlsfits), function(x) {
+  rbindlist(lapply(erlsfits[[x]]$mu_ls, function(y) {
+    xy <- as.matrix(y[['pmode']])
+    data.table(utm_x = xy[1,], utm_y=xy[2,], pid = y[['pid']])
+  }))[, id := names(erlsfits)[[x]]]
+})
+
+errorTrials.relocs <- rbindlist(erlsreloc)
+# join vars and relocs based on date
+# add new column of collar, pid to be joined by 
+errorTrials.vars <- errorTrials.vars %>% tidyr::unite(cpid, c(id,pid), sep=',', remove=F)
+errorTrials.relocs <- errorTrials.relocs %>% tidyr::unite(cpid, c(id,pid), sep=',', remove=F)
+errorTrials.atm <- full_join(errorTrials.vars, errorTrials.relocs, by='cpid', keep=FALSE)
+```
+
+To work in the Movebank format required by package `ctmm`, we need to add a 
+date-time stamp for each relocation. We will first get this information from the
+`vhfData` object created above, then add it to the `hares.atm` dataframe we 
+just created.
+
+```{r date-time-stamp, echo=TRUE, tidy=TRUE}
+# now need to get date-time stamp for each reloc for MoveBank 
+# get the first date-time for each indiv/obs_id from vhfData
+dates <- erData %>% 
+  dplyr::group_by(indiv, obs_id) %>%
+  dplyr::filter(row_number()==1) %>%
+  tidyr::unite(cpid, c(indiv, obs_id), sep=',', remove=F) %>%
+  dplyr::select(c(-utm_x, -utm_y, -azimuth, -prior_r, -obs_id, -indiv))
+trials.triangd <- left_join(errorTrials.atm, dates, by='cpid', keep=FALSE)
+```
+
+
+## Error measurements
+
+Now that all error trials have been triangulated, we can estimate the distance
+between a collar's true location and the location estimated from MR's or BS's
+triangulation efforts. We use function `st_distance` from package `sf` to measure 
+the distance then, for each observer, we extract mean, median, minimum, and
+maximum error, as well as the standard deviation.
+
+```{r error-reduction-dist, echo=TRUE, tidy=TRUE}
+# load dataset with true locations of test collars
+trueLocs_raw <- read.csv("../Data/ErrorTrials_TrueLocs.csv")
+
+trueLocs_raw$TrueLoc <- as.factor(trueLocs_raw$TrueLoc)
+
+# set coordinates with an up to date datum
+trueLocs <- drop_na(trueLocs_raw, Easting)
+coordinates(trueLocs) <- c("Easting", "Northing")
+proj4string(trueLocs) <- CRS("+init=epsg:32622")
+
+trueLocs <- spTransform(trueLocs, CRS("+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m +no_defs"))
+
+# turn the triangulated locations objects into a sp object
+trials.triangd_sp <- SpatialPointsDataFrame(coords = trials.triangd[, c("utm_x", "utm_y")], data = trials.triangd[, c(1:6, 9:24)], proj4string = CRS("+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m +no_defs"))
+
+
+# turn it into a sf object to use st_distance to calculate distance between tests 
+# and true locs
+trueLocs_sf <- st_as_sf(trueLocs) %>% rename(., Frequency = Collar) %>% arrange(., Date, Frequency)
+
+rr <- c(23L, 24L, 26L, 27L, 28L, 29L)
+
+trials.triangd_sf <- st_as_sf(trials.triangd_sp) %>% arrange(., Date, Frequency) %>% dplyr::filter(., !(row_number() %in% rr))
+
+# now, measure the distance in meters, between trials and true locations
+trials.triangd_sf$Error <- as.numeric(st_distance(trials.triangd_sf, trueLocs_sf, by_element = TRUE, which = "Euclidean"))
+
+# and get a mean value
+err_mean <- with(trials.triangd_sf, tapply(trials.triangd_sf$Error, trials.triangd_sf$Observer, mean))
+err_sd <- with(trials.triangd_sf, tapply(trials.triangd_sf$Error, trials.triangd_sf$Observer, sd))
+err_min <- with(trials.triangd_sf, tapply(trials.triangd_sf$Error, trials.triangd_sf$Observer, min))
+err_max <- with(trials.triangd_sf, tapply(trials.triangd_sf$Error, trials.triangd_sf$Observer, max))
+err_median <- with(trials.triangd_sf, tapply(trials.triangd_sf$Error, trials.triangd_sf$Observer, median))
+
+
+# remove temporary object that will be used later on
+
+# rm(list = c("IDs", "UniqIDs", "TmpInds", "TmpData", "current.triang", 
+#             "current.triang.dat", "current.triang.index", "current.triang.int", 
+#             "current.triang.loc", "workingCollar.coords", "workingCollar.loc", 
+#             "workingCollar.spatial", "date"))
+```
+
+Thus, according to our analyses, the mean error for MR in 2017 was 
+**`r prettyNum(err_mean[2], digits = 3)` $\pm$ `r prettyNum(err_sd[2], digits = 3)`** m, 
+whereas for BS in 2018 it was 
+**`r prettyNum(err_mean[1], digits = 3)` $\pm$ `r prettyNum(err_sd[1], digits = 3)`** m.

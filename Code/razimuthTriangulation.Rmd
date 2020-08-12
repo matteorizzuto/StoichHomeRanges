@@ -1,0 +1,599 @@
+---
+title: "Snowshoe hare Triangulation with razimuth"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+author: "Matteo Rizzuto"
+output:
+  rmdformats::html_clean:
+    self_contained: false
+    thumbnails: true
+    lightbox: true
+    gallery: true
+    highlight: tango
+    code_folding: hide
+    fig_width: 8
+    fig_height: 6
+    df_print: paged
+  pdf_document:
+    citation_package: biblatex
+    dev: pdf
+    fig_caption: true
+    fig_crop: TRUE
+    highlight: tango
+    keep_tex: true
+    latex_engine: pdflatex
+    toc: true
+    toc_depth: 2
+    number_sections: false
+    df_print: kable    
+fontsize: 11pt
+geometry: margin=1in
+documentclass: article    
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/ecology.csl
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r dependencies-load, eval=FALSE, include=FALSE, tidy=TRUE}
+knitr::knit('StoichiometryOfHomeRanges.Rmd', tangle=TRUE)
+source('StoichiometryOfHomeRanges.R')
+```
+
+
+## Data Loading and Wrangling
+
+Over the course of four years, from 2016 to 2019, our research group 
+live-trapped, collared, and followed 38 snowshoe hares over four sampling grids. 
+These are, from younger (20–40 years old) to oldest (81–100 years old): 
+Bloomfield (n = 35), Unicorn (n = 1), Terra Nova North (n = 1), and Dunphy’s 
+Pond (n = 1). As the bulk of individuals followed was found in the Bloomfield 
+grid, we will focus on this population of hares. Each year, live trapping 
+occurred in the spring and fall seasons, whereas triangulation took place 
+during the summer months (i.e., May-September). Triangulation started in 2017. 
+See the main text and Supplementary Information for details on animal handling 
+and live trapping protocols and permits.
+
+Here, we begin by loading the datasets containing the triangulation data, one 
+per year, and the dataset containing the live-trapping and demographic data.
+
+```{r data-load-clean, echo=TRUE,tidy=TRUE}
+# Load the triangulation raw data
+rawData17 <- read.csv("../Data/VHF_CleanData_2017.csv", header = TRUE) # 2017
+rawData18 <- read.csv("../Data/VHF_CleanData_2018.csv", header = TRUE) # 2018
+rawData19 <- read.csv("../Data/TelemetryPoints_VHF_2019.csv", 
+                      header = TRUE) # 2019
+
+# Switch back to VHF_CleanData_2019.csv to run with data pre Bella's corrections 
+# from Dec 2019
+
+# Load hare trapping and demographic data, this contains the eartag number
+# which allows us to track if individuals survived multiple years
+hareDemData <- read.csv("../Data/CollaredHareData.csv", stringsAsFactors = TRUE)
+
+# make sure Collar Frequency and SamplingYear are factors
+hareDemData$CollarFrequency <- as.factor(hareDemData$CollarFrequency)
+hareDemData$SamplingYear <- as.factor(hareDemData$SamplingYear)
+
+
+# load the spatial layout of our sampling grids
+grid_points_all <- read_sf(dsn = "../Data/GridPoints", 
+                           layer = "GridPts_withFRI")
+
+# subset the Bloomfield grid, which we will use as a visual reference
+# for the position of our grid in space
+bl_grid_points <- subset(grid_points_all, 
+                         grid_points_all$SiteName == "Bloomfield")
+
+# Load the StDMs raster layers
+acruCN <- raster("../Data/StDMs_Rasters/Ratios/ACRU_CN.tif")
+acruNP <- raster("../Data/StDMs_Rasters/Ratios/ACRU_NP.tif")
+vaanCN <- raster("../Data/StDMs_Rasters/Ratios/VAAN_CN.tif")
+vaanCP <- raster("../Data/StDMs_Rasters/Ratios/VAAN_CP.tif")
+vaanNP <- raster("../Data/StDMs_Rasters/Ratios/VAAN_NP.tif")
+```
+
+### Caveats
+The 2019 triangulation data were collected using decimal coordinates, whereas 
+for the 2017 and 2018 triangulation data we used UTM coordinates. The following 
+code chunk solves this discrepancy by reprojecting every triangulation dataset 
+to the same projection used by our Stoichiometric Distribution Models, an 
+Universal Trasverse Mercator with these specifications: 
+`+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m +no_defs`
+
+```{r rawdata-crs-conversion, echo=TRUE, tidy=TRUE}
+# 2019 uses lat/long and 2017-2018 use UTM
+# convert all of them to meters to match stoich raster CRS
+# code developed by Isabella C. Richmond (https://gitlab.com/icrichmond/)
+# note that ICR uses the notation "VHFXXXX" to name the telemetry datasets, 
+# where XXXX is the year of sampling in its 4 digits notation 
+ 
+rawData17 <- drop_na(rawData17, Easting)
+coordinates(rawData17) <- c("Easting", "Northing")
+proj4string(rawData17) <- CRS("+init=epsg:32622")
+
+rawData17 <- spTransform(rawData17, CRS("+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m +no_defs"))
+rawData17 <- as.data.frame(rawData17)
+rawData17$UTMZone <- as.integer(22)
+
+
+coordinates(rawData18) <- c("Easting", "Northing")
+proj4string(rawData18) <- CRS("+init=epsg:32622")
+
+rawData18 <- spTransform(rawData18, CRS("+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m +no_defs"))
+rawData18 <- as.data.frame(rawData18)
+rawData18$UTMZone <- as.integer(22)
+
+
+coordinates(rawData19) <- c("Easting", "Northing")
+proj4string(rawData19) <- CRS("+proj=longlat +datum=WGS84")
+
+rawData19 <- spTransform(rawData19, CRS("+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m +no_defs"))
+rawData19 <- as.data.frame(rawData19)
+rawData19$UTMZone <- as.integer(22)
+```
+
+While in the field, we collected several variables that we are not going to use 
+in the following analyses. These include:
+
+* **Notes**, which contained general comments and notes about relocations collected in the field
+* **SampleTimeCat**, **SampleTimeGeneral**, and **TimeCategory**, which we created to categorize
+the time of triangulation: in the final dataset, variable AM_PM has taken over their function
+* **Clouds** and **Temperature** (Temp, Temp_C), were collected in different ways between 2017--2018 and 2019, due to differences in the sampling equipment, and hence they cannot be used for analyses that take into account all three years
+* **Line**, which identifies the lines drawn on the iPad along a bearing collected during triangulation, provide information which is redundant with the Point variable
+* **Fix.Location**, which is redundant with the UTM coordinates of the listening points and
+is used for convenience in the field
+* **Time_O**, which is redundant as no script uses the original time in HH:MM:SS but all
+use time in HHMMSS stored in variable Time
+* **Alive**, which was collected to keep track of the live collars on the grid during data
+collection but is never used in the scripts
+
+Finally, in summer 2017, the main observer (MR) had health issues that prevented
+him from performing data collection for a period of three days. During this 
+time, a second observer (TH) performed triangulations, to check whether the 
+collared animals were alive. As these relocations covered a limited period of 
+time, and for lack of an assessment of the intra-observer variability in 
+triangulation skills, we exclude these relocations from all analyses.
+
+## Snowshoe hare dataset preparation
+After cleaning the three triangulation data sets following the caveats listed 
+above, we merge them into one, called `liveData`.
+
+```{r data-cleanup, echo=TRUE, tidy=TRUE, message=FALSE}
+# Isolate collars to make working on them easier
+Data17 <- subset(rawData17, rawData17$Frequency == "149.535" | 
+                   rawData17$Frequency == "149.673" | 
+                   rawData17$Frequency == "149.394" | 
+                   rawData17$Frequency == "149.452")
+
+# Isolate collars to make working on them easier
+Data18 <- subset(rawData18, rawData18$Frequency == "149.003" | 
+                   rawData18$Frequency == "149.053" | 
+                   rawData18$Frequency == "149.093" | 
+                   rawData18$Frequency == "149.173" | 
+                   rawData18$Frequency == "149.213" | 
+                   rawData18$Frequency == "149.274" | 
+                   rawData18$Frequency == "149.374" | 
+                   rawData18$Frequency == "149.474" | 
+                   rawData18$Frequency == "149.613" | 
+                   rawData18$Frequency == "149.633" | 
+                   rawData18$Frequency == "149.653")
+
+# Drop data from 18-06-2018 for collar 149.653 
+Data18 <- Data18[!(Data18$Frequency == "149.653" & 
+                     Data18$Date == "2018-06-18"),]
+
+# Isolate collars to make working on them easier
+Data19 <- subset(rawData19, rawData19$Frequency == "149.124" | 
+                   rawData19$Frequency == "149.233" | 
+                   rawData19$Frequency == "149.294" | 
+                   rawData19$Frequency == "149.423" | 
+                   rawData19$Frequency == "149.513" | 
+                   rawData19$Frequency == "149.555" | 
+                   rawData19$Frequency == "149.594" | 
+                   rawData19$Frequency == "150.032" | 
+                   rawData19$Frequency == "150.052" | 
+                   rawData19$Frequency == "150.072" | 
+                   rawData19$Frequency == "150.091" | 
+                   rawData19$Frequency == "150.111" | 
+                   rawData19$Frequency == "150.132" | 
+                   rawData19$Frequency == "150.154" | 
+                   rawData19$Frequency == "150.173" | 
+                   rawData19$Frequency == "150.191" | 
+                   rawData19$Frequency == "150.232" | 
+                   rawData19$Frequency == "150.273" | 
+                   rawData19$Frequency == "150.314" | 
+                   rawData19$Frequency == "150.332" | 
+                   rawData19$Frequency == "150.373" | 
+                   rawData19$Frequency == "150.392") 
+
+# remove NAs
+Data17 <- drop_na(Data17, Azimuth)
+Data18 <- drop_na(Data18, Azimuth)
+Data19 <- drop_na(Data19, Azimuth)
+
+# Set year variable
+Data17 <- add_column(Data17, Year = "2017")
+
+Data18 <- add_column(Data18, Year = "2018")
+
+Data19 <- add_column(Data19, Year = "2019")
+
+# Categorize times as AM or PM in Data19
+for (i in 1:(nrow(Data19) - 1)) {
+   Data19$AM_PM <- ifelse(Data19$TimeCategory == "Morning","AM", "PM")
+}
+
+# Remove unused columns from the three dataframes
+Data17 <- dplyr::select(Data17, -c(Notes, SampleTimeCat, SampleTimeGeneral, 
+                                   Clouds, Temp, Line, Alive))
+Data18 <- dplyr::select(Data18, -c(Notes, SampleTimeCat, SampleTimeGeneral, 
+                                   Clouds, Temp, Line, Alive))
+Data19 <- dplyr::select(Data19, -c(FixLocation, Temp_C, TimeCategory))
+
+# combine the three dataframes into a single one
+
+liveData <- rbind(Data17, Data18, Data19) # if running analyses including 2017 data
+
+# str(liveData)
+
+liveData$Frequency <- as.factor(liveData$Frequency)
+liveData$Year <- as.factor(liveData$Year)
+
+# remove NAs
+liveData <- drop_na(liveData, Azimuth)
+
+# remove second observer, who only did 1 day of triangulations 
+# and no error reduction trials
+liveData <- subset(liveData, liveData$Observer != "TH")
+
+# use this code when knitting to html
+kable(liveData, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                fixed_thead = TRUE) %>%
+  scroll_box(width = "100%", height = "500px")
+
+# use this code when knitting to pdf
+# kable(head(liveData), "latex", booktabs = TRUE) %>% 
+#   kable_styling(latex_options = "scale_down", position = "center")
+```
+
+## Triangulation
+
+R can perform triangulation through the package `sigloc` [@Berg2015] or 
+package `razimuth` [@Gerber2018]. Here, we use package `razimuth` to estimate
+the location of our VHF collars for every day of sampling over 2017, 2018, 
+and 2019. First, we add a Group Identifier (GID) to each individual set of 
+triangulation azimuths --- that is, one group identifier for each daily group 
+of azimuths collected for each collar. We do this based on each unique 
+combination of `CollarFrequency` and `Date`.
+
+The following code was developed by I. C. Richmond and M. Rizzuto, with help 
+from [A. Robitaille](https://github.com/robitalec) and Dr. S. Berg.
+
+```{r GID-assignment, echo=TRUE, tidy=TRUE, warning=FALSE}
+# remove unused levels from factor elements within liveData
+liveData <- droplevels(liveData)
+
+# isolate the IDs of each data entry, i.e. its unique Frequency
+IDs <- paste(liveData[, "Frequency"]) 
+
+# extract unique ID values, this vector will be used multiple time to index 
+# loops
+UniqIDs <- unique(IDs)
+
+# create column names for new df
+OutputFields <- c(paste(colnames(liveData)), "GID") 
+
+# add GID column to original data
+liveData$GID <- NA    
+liveData$GID <- as.factor(liveData$GID)
+
+# create new df
+vhfData <- liveData[FALSE,] 
+
+# remove useless GID column from original dataset
+liveData$GID <- NULL 
+
+# The following loop scans the data for groups of azimuths 
+# obtained for each collar on each day of triangulation, and assigns a GID 
+# based on the date of collection.
+
+for (i in 1:length(UniqIDs)){
+  # first, create a temporary dataset to host each Frequency's data in turn
+  TmpInds <- which(IDs == UniqIDs[i]) 
+  TmpData <- liveData[TmpInds,]   
+  # assign a starting GID
+  TmpData[1, "GID"] <- 1 
+  for (j in 1:(nrow(TmpData) - 1)){
+    if (TmpData$Year[j] == "2017" | TmpData$Grid[j] == "UNI"){
+      # if the Date stays the same, we want to assign the same GID 
+      if (TmpData[j + 1, "Date"] == TmpData[j, "Date"] &&
+          TmpData[j + 1, "AM_PM"] == TmpData[j, "AM_PM"]){
+        TmpData[j + 1, "GID"] <- TmpData[j, "GID"]
+      }
+      else {
+        # if the Date changes, we want the GID to increase accordingly
+        TmpData[j + 1, "GID"] <- TmpData[j, "GID"] + 1
+      }
+    }
+    else {
+      if (TmpData[j + 1, "Date"] == TmpData[j, "Date"]){
+        TmpData[j + 1, "GID"] <- TmpData[j, "GID"]
+      }
+      else {
+        # if the Date changes, we want the GID to increase accordingly
+        TmpData[j + 1, "GID"] <- TmpData[j, "GID"] + 1
+      }
+    }
+  }
+  # browser()
+  # bind each temp dataset into a new one
+  vhfData <- rbind(vhfData, TmpData) 
+}
+
+vhfData$GID <- as.factor(vhfData$GID)
+vhfData$Time_O <- times(vhfData$Time_O)
+
+kable(vhfData, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                fixed_thead = TRUE) %>%
+  scroll_box(width = "100%", height = "500px")
+
+# kable(head(vhfData), "latex", booktabs = TRUE) %>% 
+#   kable_styling(latex_options = "scale_down", position = "center")
+```
+
+Now we add a column to the dataset that reports the date of collection 
+(`Date`) in the format `YYYY-MM-DD HH:MM:SS`. Then, we remove the columns that 
+are not necessary to run the analyses. Finally, we add a coolumn named `prior_r`. 
+This is a fundamental component to run the triangulation in `razimuth`: `prior_r` 
+describes the maximum distance between a transmitter, e.g. a collar, and a 
+receiver, e.g. a VHF receiver. We could not measure this parameter in the field,
+but we can estimate a plausible value for it. Our live trapping grid is a square
+of 500 m $\times$ 500 m. Based on observer experience triangulating our snowshoe
+hares in the field,while standing at the highest point on the grid, our VHF 
+antenna could barely pick up a signal from a receiver on the opposite side of 
+the grid. The young, dense vegetation, together with the ubiquitous presence of 
+water on the grid, could be the reason of this challenges in hearing the signal 
+of a collar applied to a ground-dwelling animal. Thus, we estimate a maximum 
+distance between the receiver and the transmitter of 750 m, i.e. the length of
+our grid plus an additional 250 m. We consider this to be a conservative
+estimate.
+
+```{r date-setup, echo=TRUE,tidy=TRUE}
+# add a column that has date and time for razimuth package
+vhfData <- add_column(vhfData, datetime = as.POSIXct(paste(vhfData$Date, vhfData$Time_O), format="%Y-%m-%d %H:%M:%S", tz = "America/St_Johns", usetz = TRUE)) 
+head(vhfData)
+# select only those columns necessary for ATM calculation
+vhfData <- vhfData %>%
+  dplyr::select(c(-Point,-UTMZone,-Date,-Time_O,-Time,-AM_PM,-Observer,-Grid,-Year,-Wind,-Rain))
+# rename columns to appropriate headers for ATM calculation
+vhfData <- vhfData %>%
+  dplyr::rename(indiv = Frequency, obs_id = GID, azimuth = Azimuth, date = datetime, utm_x = Easting, utm_y = Northing)
+# add column of prior_r. This is the maximum distance (m) between observer and transmitter prior to taking the 
+# azimuth. If this was not obtained during data collection, still need to have an upper bound for each azimuth 
+# BL grid is 500 m wide and buns do not generally move more than ~250m off grid. So max distance away would be 
+# approximately 750m. Setting this for every row.
+vhfData <- vhfData %>%
+  add_column(prior_r = 750)
+```
+
+A typical workflow in `razimuth` starts by converting the dataset of interest 
+to a list object with the function `convert_atm()`. We then visualize the 
+geometry of each relocation with `visualize_atm()`. Note that his will plot 
+a single relocation at the time, for each collar. This can get really 
+out of hand, so we are going to save these plots as PDFs in a dedicate subfolder
+in the `Results` folder. 
+
+```{r atm-prep-and-vis, echo=TRUE,tidy=TRUE, message=FALSE}
+# AR helped with this code - github.com/robitalec
+# For all individuals 
+# Unique individuals
+uids <- unique(vhfData$indiv)
+
+## Convert all to atm
+# Loop through 'em
+lsatms <- lapply(uids, function(id) convert_atm(df = vhfData[vhfData$indiv == id,]))
+
+# Name the list for downstream
+names(lsatms) <- uids
+
+## Visualize all and save all in folder
+lapply(seq_along(lsatms), function(x) {
+  # first create an object to store the path to the saving location and the saved object's name
+  # we want to save in '../Results/Init_Triangd"
+  # we also want to save each plot in a single multipage PDF file, names after
+  # the collar being visualized 
+  mypath <- file.path("..","Results", "Init_Triangd",paste("init_triangulation_", names(lsatms)[[x]],
+                                                           ".pdf", sep = ""))
+  # now start the printing device
+  pdf(mypath)
+  # call a new plot
+  plot.new()
+  # set the file's name, i.e. the collar frequency, which will appear on the first page of the PDF
+  mtext(names(lsatms)[[x]])
+  # now loop through the collar's relocations, one at the time, and plot its geometry
+  lapply(lsatms[[x]]$pid, function(i) visualize_atm(lsatms[[x]], obs_id = i, add_prior = TRUE))
+  # turn off the printing device
+  invisible(dev.off())
+})
+
+```
+
+### Azimuthal Model Fitting via Markov Chain Monte Carlo algorithm
+Finally, we use function `atm_mcmc()` to fit the Azimuthal Telemetry Model 
+[@Gerber2018] using a Markov Chain Monte Carlo framework. We are going to
+want to run this function for 10000 iterations, to ensure a good estimate of the 
+kappa parameter, using the `lapply()` function in base R. Once the iterations
+are complete, we store the output in an object called `lsfits` and save it to 
+our `Results` folder as `razimuth_lsfits.rds`. 
+
+> **Note**: this is a time-consuming step! On a machine with a
+Quad-Core Intel Core i7 2.5 GHz with 16 Gb RAM, it took about **5 hours**. 
+Please, allocate as much or more time to complete running or compiling this code 
+chunk, depending on your hardware configuration. 
+
+> We provide a pre-generated `.rds` file to load in your R code if you do not 
+want or cannot run this portion of the code. The pre-generated file can be 
+found here: 
+`../Results/razimuth_lsfits.rds`
+
+```{r atm-fit, echo=TRUE, tidy=TRUE}
+tictoc::tic() # start timing how long it will take to run
+# Model all
+lsfits <- lapply(lsatms, atm_mcmc, n_mcmc = 10000, n_burn = 1000)
+tictoc::toc() # return total run time
+```
+
+Given the extremely long runtime of the above code chunk, saving its output is a
+good idea to save time in future iterations of this notebook.
+
+```{r atm-fits-save, echo=TRUE, tidy=TRUE, message=FALSE, results="hide"}
+# save the resulting model fits as and .rds object
+# this step allows us to not run the whole code each time, instead
+# skipping ahead of the most computationla intensive part
+lsfits <- saveRDS(lsfits, "../Results/razimuth_lsfits.rds")
+```
+
+## Visual check of the triangulations
+
+Now, let's load the model fits and visualize the output of the ATM, with the errors.
+
+```{r atm-fits-loading, echo=TRUE,tidy=TRUE}
+lsfits <- readRDS("../Results/razimuth_lsfits.rds")
+```
+
+First, we plot each triangulations with its associated error ellipses, 
+error estimates, and posterior-estimated location of the collar. As before, 
+to accommodate the large number of plots produced by the following code chunk,
+we are going to save them in a dedicate folder, `Post_Triangd`, under `Results`.
+
+```{r atm-error-vis, echo=TRUE, tidy=TRUE, message=FALSE, results="hide"}
+# Visualize all with error
+lapply(seq_along(lsatms), function(x) {
+  mypath <- file.path("..","Results", "Post_Triangd",paste("post_triangulation_", names(lsatms)[[x]],
+                                                           ".pdf", sep = ""))
+  pdf(mypath)
+  print(plot.new())
+  mtext(names(lsatms)[[x]])
+  lapply(lsatms[[x]]$pid, plyr::failwith(NULL, function(i) {
+    visualize_atm(lsatms[[x]], obs_id = i, add_prior = TRUE)
+    p_isopleth(df = lsfits[[x]]$mu_ls[[i]]$pdraws, prob_lvls = c(0.95), range_extend = 0,
+               kde_n = 50, col_vec = c(4,4))
+    points(matrix(lsfits[[x]]$pmode[i, 2:3], ncol = 2), pch = 21, bg = 4)
+    legend("topleft", c("Posterior Mode"), pch = 21, pt.bg = 4, bty = "n")
+  }
+  ))
+  invisible(dev.off())
+})
+```
+
+A way to assess how good the fit of the ATM to our data was is to plot the
+values of the parameter kappa over each iteration. We can do this in two ways:
+either in a traceplot, which shows the variation in the value of kappa, or as a 
+running mean, which show the change in the mean value of kappa over each 
+iteration. First, let's look at the traceplot for kappa. Here, we are looking for
+a plot in which the peaks and pits are, in general, about the same width.
+
+``` {r kappa-convergence-check-1, echo=TRUE, tidy=TRUE}
+# check convergence ----
+# pdf('graphics/traceplot.pdf')
+lapply(seq_along(lsfits), function(x) {
+  plot.new()
+  mtext(names(lsfits)[[x]])
+  plot_kappa(atm_obj = lsfits[[x]]$kappa_ls, item = "traceplot")
+})
+# dev.off()
+```
+
+And here we plot the running mean of kappa. In this case, we are looking for 
+a line that eventually flattens out. 
+
+```{R kappa-convergence-check-2, echo=TRUE, tidy=TRUE}
+# pdf('graphics/runmean.pdf')
+lapply(seq_along(lsfits), function(x) {
+  plot.new()
+  mtext(names(lsfits)[[x]])
+  plot_kappa(atm_obj = lsfits[[x]]$kappa_ls, item = "run_mean")
+})
+# dev.off()
+```
+
+## Data Error Extraction
+Now that the triangulation is complete, what is left to do is to extract the
+variances associated with each relocation to use them with `ctmm` to estimate 
+and error-corrected home range size.
+
+```{r vars-extract, echo=TRUE, tidy=TRUE}
+## Extract variances to use in ctmm
+lsvars <- lapply(seq_along(lsfits), function(x) {
+  rbindlist(lapply(lsfits[[x]]$mu_ls, function(y) {
+    xy <- y[['pdraws']]
+    data.table(COVt.x.y = var(x=xy[,1], y=xy[,2]), pid = y[['pid']], 
+               COV.x.x = var(xy[, 1]), COV.y.y = var(xy[, 2]))
+  }))[, id := names(lsfits)[[x]]]
+})
+
+# bind into a list
+hares.vars <- rbindlist(lsvars)
+```
+
+We now create a new dataframe that contains the relocations, collar IDs, and 
+variances from `atm_mcmc()`.
+
+```{r echo=TRUE,tidy=TRUE}
+# create a dataframe with relocations, IDs, and variances 
+# extract relocation data
+lsreloc <- lapply(seq_along(lsfits), function(x) {
+  rbindlist(lapply(lsfits[[x]]$mu_ls, function(y) {
+    xy <- as.matrix(y[['pmode']])
+    data.table(utm_x = xy[1,], utm_y=xy[2,], pid = y[['pid']])
+  }))[, id := names(lsfits)[[x]]]
+})
+hares.relocs <- rbindlist(lsreloc)
+# join vars and relocs based on date
+# add new column of collar, pid to be joined by 
+hares.vars <- hares.vars %>% tidyr::unite(cpid, c(id,pid), sep=',', remove=F)
+hares.relocs <- hares.relocs %>% tidyr::unite(cpid, c(id,pid), sep=',', remove=F)
+hares.atm <- full_join(hares.vars, hares.relocs, by='cpid', keep=FALSE)
+```
+
+To work in the Movebank format required by package `ctmm`, we need to add a 
+date-time stamp for each relocation. We will first get this information from the
+`vhfData` object created above, then add it to the `hares.atm` dataframe we 
+just created.
+
+```{r date-time-stamp, echo=TRUE, tidy=TRUE}
+# now need to get date-time stamp for each reloc for MoveBank 
+# get the first date-time for each indiv/obs_id from vhfData
+dates <- vhfData %>% 
+  dplyr::group_by(indiv, obs_id) %>%
+  dplyr::filter(row_number()==1) %>%
+  tidyr::unite(cpid, c(indiv, obs_id), sep=',', remove=F) %>%
+  dplyr::select(c(-utm_x,-utm_y,-azimuth,-prior_r,-obs_id,-indiv))
+hares.triangd <- left_join(hares.atm,dates,by='cpid', keep=FALSE)
+```
+
+Finally, we perform some dataset cleaning, before reprojecting it into a 
+Latitude/Longitude projection necessary for the Movebank format used by `ctmm`,
+and save the results to a csv file. 
+
+```{r hares.triang-clean-save, echo=TRUE, tidy=TRUE}
+# remove the two collars that are not in Bloomfield
+hares.triangd <- subset(hares.triangd, hares.triangd$indiv != "149.374" &
+                 hares.triangd$indiv != "149.474")
+# remove the four individuals that appear in more than one year - keeping the year 
+# with the highest number of relocations
+hares.triangd <- subset(hares.triangd, hares.triangd$indiv != "149.555")
+
+# reproject into lat/long and save - necessary for MoveBank
+coordinates(hares.triangd) <- c("utm_x", "utm_y")
+proj4string(hares.triangd) <- CRS("+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m
+                                    +no_defs")
+hares.triangd <- spTransform(hares.triangd, CRS("+init=epsg:4326"))
+hares.triangd <- as.data.frame(hares.triangd)
+hares.triangd <- hares.triangd %>%
+  dplyr::rename(., lat=utm_y, long=utm_x)
+
+write.csv(hares.triangd, "../Results/harestriangulated_razimuth.csv")
+```

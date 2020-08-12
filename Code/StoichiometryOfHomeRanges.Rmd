@@ -1,0 +1,262 @@
+---
+title: "Forage stoichiometry predicts the home range size of a small terrestrial herbivore"
+subtitle: "<h2>Supporting Code</h2>"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+author: 
+  - Matteo Rizzuto^[<a href="https://orcid.org/0000-0003-3065-9140">https://orcid.org/0000-0003-3065-9140</a>, Memorial University of Newfoundland, <a href="mrizzuto@.mun.ca">mrizzuto@mun.ca</a>] 
+  - Shawn J. Leroux^[<a href="https://orcid.org/0000-0001-9580-0294">https://orcid.org/0000-0001-9580-0294</a>, Memorial University of Newfoundland]
+  - Eric Vander Wal^[<a href="https://orcid.org/0000-0002-8534-4317">https://orcid.org/0000-0002-8534-4317</a>, Memorial University of Newfoundland]
+  - Yolanda F. Wiersma^[<a href="https://orcid.org/0000-0003-4604-9240">https://orcid.org/0000-0003-4604-9240</a>, Memorial University of Newfoundland]
+  - Travis R. Heckford^[<a href="https://orcid.org/0000-0002-3993-6450">https://orcid.org/0000-0002-3993-6450</a>, Memorial University of Newfoundland]
+  - Juliana Balluffi-Fry^[<a href="https://orcid.org/0000-0002-2365-1055">https://orcid.org/0000-0002-2365-1055</a>, Memorial University of Newfoundland]
+  - Isabella C. Richmond^[<a href="https://orcid.org/0000-0001-5079-8442">https://orcid.org/0000-0001-5079-8442</a>, Memorial University of Newfoundland]
+output:
+  rmdformats::html_clean:
+    self_contained: true
+    thumbnails: true
+    lightbox: true
+    gallery: true
+    highlight: tango
+    code_folding: hide
+    fig_width: 12
+    fig_height: 8
+    df_print: paged
+    toc_depth: 2
+    includes:
+      after_body: footer.html
+  pdf_document:
+    citation_package: biblatex
+    dev: pdf
+    fig_caption: true
+    fig_width: 7
+    fig_height: 2.64
+    highlight: tango
+    keep_tex: true
+    latex_engine: pdflatex
+    toc: true
+    df_print: kable    
+fontsize: 11pt
+geometry: margin=1in
+documentclass: article    
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/ecology.csl
+editor_options: 
+  chunk_output_type: inline
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage{array}
+  - \usepackage{multirow}
+  - \usepackage{wrapfig}
+  - \usepackage{float}
+  - \usepackage{colortbl}
+  - \usepackage{pdflscape}
+  - \usepackage{tabu}
+  - \usepackage{threeparttable} 
+  - \usepackage{threeparttablex} 
+  - \usepackage[normalem]{ulem} 
+  - \usepackage{makecell}
+  - \usepackage{xcolor} 
+  - \usepackage{fontawesome5}  
+---
+
+# Introduction
+This document details the workflow for our analyses investigating whether resource
+elemental composition influences consumer home range size. We focus on a 
+study system including the snowshoe hare (*Lepus americanus*) and two of its
+preferred summer forage species, red maple (*Acer rubrum*) and lowland 
+blueberry (*Vaccinium angustifolium*). The present document contains:
+
+* code to estimate the location of each snowshoe hare from daily telemetry 
+sessions in the field (May--September, 2016 to 2019)
+* code to estimate home range size of 30 snowshoe hares using an autocorrelated
+kernel density estimator (aKDE)
+* code to extract C:N, C:P, and N:P ratios values from within snowshoe hare home 
+ranges from StDM-predicted surfaces of spatial elemental composition of red 
+maple and blueberry 
+* code to run models investigating the relationship between resource 
+stoichiometry and home range size, at three kUD isopleths: 50% (the "core 
+area"), 75%, and 90%
+* code to produce the figures in the main text and for visual supporting 
+materials
+
+You can use the interactive menu on the right to navigate between the different
+sections of the document. 
+
+## Naming conventions in this document
+In the following, we make use acronyms for species' names, using different 
+acronyms for the same species in the text, R code chunks, and 
+dataframe column headers. In particular, in the text we routinely use the 
+common name of a species, followed by either the full (on first use) or 
+shortened latin name. In dataframes and code, we use an acronym derived from the 
+first two letters of the genus name and the first two letters from the species 
+name. The following table should be helpful in keeping track of what is what.
+
+Latin name                  Common Name     Acronym
+-----------------------     -----------     -------
+*Acer rubrum*               Red Maple       ACRU
+*Vaccinium angustifolium*   Blueberry       VAAN
+
+## Recompiling this notebook
+
+Running spatial analyses in R -- even not overly complicated
+ones like those included in this document -- is a fairly computation-intensive 
+endeavour. As such, if you plan to re-run the analyses reported here, be advised
+that is may tame **some** time. Currently, recompiling this notebook can take
+around **6-7 hours**, depending on your machine hardware configuration. We 
+highlight each of the more time-consuming and computationally intensive 
+code chunks and provide saved version of their outputs that can be loaded into 
+your environment to speed up recompiling this notebook. Additionally, some of 
+the objects produced during home range size estimation can be quite large, e.g. 
+$\geq$ 2 Gb. 
+
+As well, please note that this document uses relative paths and thus requires 
+the following (or similar) folder structure for the code to run:
+
+```
+.
+├── Code
+├── Data
+├── Manuscripts
+└── Results
+```
+
+In the above folder structure, the working directory to recompile this notebook 
+should be set to **Code**.
+
+Each section below is an individual, separate R notebook that can be found in 
+the **Code** folder of this repository. The modular format of this document was 
+inspired by: https://martinctc.github.io/blog/first-world-problems-very-long-rmarkdown-documents/
+
+
+```{r include=FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+## R packages used
+This R notebook relies on several packages. Some of these are not available on 
+CRAN, or are still in active development. These include packages 
+`razimuth`, `gt`, and `SDMTools`. 
+
+`razimuth` [@Gerber2018] allows for estimating the position of 
+a transmitting collar from a set of three or more azimuthal bearings collected 
+in the field through triangulation. `razimuth`is not on CRAN and is not 
+maintained anymore. Crucially, however, `razimuth` allows to estimate error 
+ellipses around radiocollar locations and these ellipses can be taken into
+account to estimate home range size using package `ctmm` [@Fleming2017,@Fleming2019].
+We load `razimuth` from the author's GitHub archive repository, 
+where it is stored in its last stable version. 
+
+`SDMTools` is a CRAN-archived package that provides a set of tools for 
+processing the output of species distribution models. We will load it from the 
+CRAN's GitHub repository.
+
+`gt` is a package currently development that facilitates the production of 
+information-rich data tables. We load it from the RStudio team own GitHub 
+repository.
+
+All of the other packages in use are available through CRAN. Package loading is 
+done using the `easypackages` package, which makes it easy to seamlessly load 
+and install packages from both within and outside the CRAN.
+
+In the "setup" R code chunk below, we also load shapefiles for:
+
+* the locations of all our traps within our four trapping grids, and then 
+separate the traps on the study grid from the other three grids
+* a shapefile of the Forest Resource Inventory (henceforth, FRI) polygons 
+delimiting forest patches
+
+both these shapefiles will be used later in this notebook, when producing maps
+showing the spatial distribution of our points.
+
+> **Please note** that, as of the time of this writing ---
+`r format(Sys.Date(), "%B %Y")` --- big changes are underway for spatial 
+analyses in R. The two foundational libraries used to run spatial analyses in 
+R,`PROJ` and `GDAL`, are undergoing significant updates. As such, several 
+thousand packages that enable users to perform spatial analyses in R and that 
+rely on these two libraries are undergoing updates as well. In particular, for 
+the code presented in this notebook, interested packages include `sf`, `sp`, and
+`rgdal`.These packages need to be installed and/or upgraded from the same source
+--- e.g. either binary (preferred) or fromtheir respective development sources. 
+Mixing installations can lead to the code below not working anymore or producing 
+unexpected results. The analyses below work with this configuration of packages 
+and dependencies:
+
+```{r echo=TRUE, tidy=TRUE}
+rgdal::rgdal_extSoftVersion()
+```
+
+> Do note, however, that upgrading `GDAL` to its 3.x version or `PROJ` to its
+6.x version may compromise parts of the R spatial code below. Most of these 
+issues are widespread throughou the R spatial community, as mentioned above, 
+and will likely take some time to be resolves. As such, please check your R 
+spatial packages configuration before attempting to recompile this notebook.
+
+```{r pkg-file-load, echo=TRUE, tidy=TRUE}
+# Load packages that are either no longer maintained, not on CRAN, or in development
+easypackages::packages("rstudio/gt", "cran/SDMTools", "cppek/razimuth" , "easypackages")
+
+# Load all other packages required
+packages("devtools", "plyr", "tidyverse", "rgdal", "rgeos", "sp", "maptools", 
+         "tmap", "ctmm", "patchwork", "tmaptools", "adehabitatHR", "gdtools", 
+         "ggmap", "ggrepel", "ggsci", "ggthemes", "maps", "spatial", "reshape2", 
+         "dismo", "sf", "raster", "rasterVis", "nlme", "ggpol", "grid", "lme4", 
+         "MuMIn", "lmerTest", "rmapshaper", "broom", "broom.mixed", 
+         "kableExtra", "patchwork",  "AICcmodavg", "RColorBrewer", "sfheaders",
+         "geosphere", "lindia", "formatR", "stringr", "data.table", "chron")
+
+```
+
+
+# Triangulation Observer Error 
+<!-- The following code chunk loads the Rmd file in which we estimate the error
+in triangulation associated with two of the observers that collected data in the 
+field-->
+```{r child=here::here("TriangulationError.Rmd")}
+
+```
+
+# Radiocollar Triangulation
+<!-- The following code chunk loads the starting Rmd, which is the one where we 
+estimate the location of collars in the field using razimuth. -->
+```{r child=here::here("razimuthTriangulation.Rmd")}
+
+```
+
+# Home Range estimation and Stoichiometric Data extraction
+<!-- The following code chunk loads the Rmd file to estimate home range size 
+using ctmm and then extract data on foliage stoichiometry of plant species from
+inside the home range-->
+```{r child=here::here("aKDE_HomeRangeEstimation.Rmd")}
+
+```
+
+# Home Range Overlap
+<!-- The following code chunk loads the Rmd file in which we investigate the 
+overlap in home range between consecutive years for four snowshoe hares -->
+```{r child=here::here("HomeRangeOverlap.Rmd")}
+
+```
+
+# Modelling and Analyses
+<!-- The following code chunk loads the model Rmd for our analyses at 50% kUD. -->
+```{r child=here::here("ModelStoichHR.Rmd")}
+
+```
+
+<!-- This next code chunk repeats our analyses on the home range size of our snowshoe hares estimated using the 75% isopleth in the kUD. -->
+```{r child=here::here("75kUDHRModels.Rmd")}
+
+```
+
+<!-- This next code chunk repeats our analyses on the home range size of our snowshoe hares estimated using the 90% isopleth in the kUD. -->
+```{r child=here::here("90kUDHRModels.Rmd")}
+
+```
+
+# Visual Supporting Materials
+<!-- Finally, this code chunk loads graphical supporting materials that allow for visualizing each hare's kernel Utilization Distribution, as well as the spatial distribution and variability of plant stoichiometry. -->
+```{r child=here::here("AdditionalPlots.Rmd")}
+
+```

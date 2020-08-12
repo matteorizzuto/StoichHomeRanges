@@ -1,0 +1,2929 @@
+---
+title: "Modeling home range size with Stoichiometry"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+author: "Matteo Rizzuto"
+output:
+  rmdformats::html_clean:
+    self_contained: false
+    thumbnails: true
+    lightbox: true
+    gallery: true
+    highlight: tango
+    code_folding: hide
+    fig_width: 8
+    fig_height: 6
+    df_print: paged
+    includes:
+      after_body: footer.html
+  pdf_document:
+    citation_package: biblatex
+    dev: pdf
+    fig_caption: true
+    fig_crop: TRUE
+    highlight: tango
+    keep_tex: true
+    latex_engine: pdflatex
+    toc: true
+    toc_depth: 2
+    number_sections: false
+    df_print: kable    
+fontsize: 11pt
+geometry: margin=1in
+documentclass: article    
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/functional-ecology.csl
+editor_options: 
+  chunk_output_type: inline
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage{array}
+  - \usepackage{multirow}
+  - \usepackage{wrapfig}
+  - \usepackage{float}
+  - \usepackage{colortbl}
+  - \usepackage{pdflscape}
+  - \usepackage{tabu}
+  - \usepackage{threeparttable} 
+  - \usepackage{threeparttablex} 
+  - \usepackage[normalem]{ulem} 
+  - \usepackage{makecell}
+  - \usepackage{xcolor}
+---
+
+```{r eval=FALSE, include=FALSE, tidy=TRUE}
+# if running as a standalone, change chunk options to evaluation this 
+# code chunk
+knitr::knit('StoichiometryOfHomeRanges.Rmd', tangle=TRUE)
+source('StoichiometryOfHomeRanges.R')
+
+knitr::knit('HomeRangeEstimation.Rmd', tangle=TRUE)
+source('HomeRangeEstimation.R')
+# source("Model_ICRaKDE_prep.R")
+```
+
+Here we perform our analyses investigating the relationship between the
+stoichiometry of preferred forage plant species and snowshoe hare 
+(*Lepus americanus*) home range size in a young forest stand in the island of
+Newfoundland, Canada. This section of the document contains:
+
+* code to test the effect of the Sampling Year variable on the home range size 
+of our sample population of snowshoe hares, following three different approaches
+* code for Linear Models investigating this relationship using a stoichiometric 
+predictor only or a combination of several stoichiometric and non-stoichiometric 
+predictors
+* code to produce diagnostic plots for some of these models, as well as code for 
+visualizing the predicted vs real data
+* code to produce model selection tables based on AICc
+
+## Packages used
+In this part of the document, we make extensive use of packages `broom` and 
+`broom.mixed`. Both are utility packages to convert statistical analysis objects 
+produced by R into tibbles, which are easier to manipulate. We also use package 
+`lindia`, which introduces a useful wrapper function to produce linear model 
+diagnostic plots using `ggplot2`.
+
+## Rationale
+Here we use the StDM-predicted data on two preferred forage plant of snowshoe 
+hares, red maple (*Acer rubrum*) and blueberry (*Vaccinium angustifolium*), and 
+telemetry-derived home range size estimates from a population of snowshoe hares
+in a young boreal forest stand to investigate the effect of resource
+stoichiometry on the home range size of a model herbivore. 
+
+Our overall research question in performing these analyses is whether ecological
+stoichiometry of dietary resources, plants in this case, influences home range 
+size in consumers --- herbivores, in the present study [@Leroux2017]. Our 
+hypothesis is that consumers adjust their home range size in response to the 
+average quality of resources and/or to their variability. 
+
+<!-- This can happen in two different, but related, ways: -->
+<!-- 1. variation in the home range size of different individuals -->
+<!--     * this is related to the individuals having an easier/tougher time finding the resources they need to satisfy their elemental dietary requirements based on the spatial distribution of the plant content of those elemenets -->
+<!-- 2. variation in an individual's preferences for areas of different stoichiometries -->
+<!--     * as Juliana's work has shown, and [@Leroux2017] hinted at, individuals may make decisions in terms of quality or quantity of the food they eat, which in turn transfer to their space use decisions -->
+
+## Data handling
+To begin with, we will get the various datasets necessary to run these analyses 
+ready. This code chunk prepares the stoichiometric data extracted from our 
+snowshoe hares home ranges for merging with the datasets containing their 
+demographic data.
+```{r modelling-stoich-prep, echo=TRUE, message=FALSE, warning=FALSE, tidy=TRUE}
+# first, let's create a function that calculates the coefficient of variation
+# i.e., the ratio of standard deviation to the mean
+CVar <- function(x){
+  (sd(x, na.rm=TRUE)/mean(x, na.rm=TRUE))*100
+}
+
+# And now let's store the #summary stats in a dataset, potentially for future
+# analysis
+short.stoich.hares <- stoich50 %>% group_by(CollarFrequency) %>% 
+  summarise_at(.vars = vars(ACRU_CN, ACRU_NP, VAAN_CN, VAAN_CP, VAAN_NP), 
+               .funs = list(~mean(., na.rm = TRUE), ~sd(., na.rm = TRUE),
+                            ~median(., na.rm = TRUE), ~min(., na.rm = TRUE),
+                            ~max(., na.rm = TRUE), ~mad(., na.rm = TRUE, 
+                                                        low = TRUE), 
+                            ~CVar(.)))
+
+short.stoich.hares$CollarFrequency <- as.factor(short.stoich.hares$CollarFrequency)
+
+# use this code when knitting to html
+kable(short.stoich.hares) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                fixed_thead = TRUE) %>%
+  scroll_box(width = "100%", height = "500px")
+
+# use this code when knitting to pdf
+# kable(head(short.stoich.hares), "latex", booktabs = TRUE) %>% 
+#   kable_styling(latex_options = "scale_down", position = "center")
+```
+
+The code chunk below does the same, but for the demographic data, following a 
+two step process. It first loads the demographic data of our snowshoe hares, 
+then merges this dataset with the one containing the information on home range 
+size estimated from the summer triangulations.    
+
+```{r modelling-demogr-prep, echo=TRUE, message=FALSE, warning=FALSE, tidy=TRUE}
+# Subset the hare demographic and trapping data to only Bloomfield grid
+hareDemData <- subset(hareDemData, hareDemData$SiteName == "Bloomfield")
+
+# remove collars which had too few relocations to produce a reliable home range
+# estimate with kUD
+hareDemClean <- subset(hareDemData, 
+                      hareDemData$CollarFrequency != "149.555")
+
+hareDemClean <- droplevels(hareDemClean)
+
+# str(hareDemData)
+
+# make the kUD home range area SpatialPolygonsDataFrame into a "normal" dataframe
+hares.core <- hr_fifty[, c(1,3)] %>% dplyr::rename(., CollarFrequency = frequency, HRsize = core) 
+
+# merge the demographic and kUD dataframes, then reorder the variables more 
+# logically, and finally break variable "Date" into its three components
+# "Year", "Month", and "Day". "Year" will be important in later modelling. 
+hareData <- merge(hareDemClean, hares.core, by = "CollarFrequency") %>% 
+  dplyr::select("CollarFrequency", "EarTag", "SiteName":"SamplingYear",
+                "HRsize", "WeightSSH_g":"TickLoad", 
+                "DateTrapped", "Comment") %>% 
+  separate("DateTrapped", into = c("YearTrp", "MonthTrp", "DayTrp"), 
+           sep = "-", remove = TRUE)
+
+hareData$SamplingYear <- as.factor(hareData$SamplingYear)
+
+kable(hareData) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                fixed_thead = TRUE) %>%
+  scroll_box(width = "100%", height = "500px")
+
+# kable(head(hareData), "latex", booktabs = TRUE) %>% 
+#   kable_styling(latex_options = "scale_down", position = "center")
+```
+
+## Stoichiometry and Home Range Size --- 50% kUD
+Here, we perform analyses aimed at testing our hypothesis and predictions listed 
+in the main text. We fit two models: the first one has formula, 
+
+$$ Home~Range~Size \sim Resource~Stoichiometry $$
+whereas the second one has formula,
+
+$$Home~Range~Size \sim Resource~Stoichiometry + Body~Size$$
+
+<!-- > **Note** I am considering removing the mixed effect of "SamplingYear". -->
+<!-- **Currently**, this variable encodes the year during which an individual  -->
+<!-- was followed for triangulation (which is often different from the year in  -->
+<!-- which it was first trapped and collared). Using this type of Year encoding  -->
+<!-- did not solve the issue of singular fit in the models. Rather, it  -->
+<!-- exacerbated it as now **all** models are singular fits (see diagnostic  -->
+<!-- plots for more insights into this). -->
+
+The code chunk below uses the variable `CollarFrequency` to perform a join 
+between the `hareData` dataset, which contains data on the demographic 
+characteristics of our study population and the size of the 50% "core area" 
+portion of the kUD, and the `short.stoich.hares` dataset, which contains the 
+information on the mean, median, standard deviation, minimum, maximum, median 
+absolute deviation (MAD), and coefficient of variation (CV) values of the 
+stoichiometric ratios of interest (C:N, C:P, and N:P) extracted from within the 
+home range core area. After this merge, we will remove the columns `PercentWhite`,
+`TickLoad`, and `Comment`, as they will not be necessary for the analyses below.
+
+```{r hr-models-prep, echo=TRUE, message=FALSE, tidy=TRUE}
+# check for consistency in the collars present in the two datasets
+# if the console returns <0 rows> all is good
+dplyr::anti_join(hareData, short.stoich.hares) 
+
+# add the stoich data to the demographics-home range dataset
+hare.stoich <- merge(hareData, short.stoich.hares, by = "CollarFrequency") %>% 
+  dplyr::select("CollarFrequency", "EarTag", "SiteName", "Trap", "SamplingYear",
+                "YearTrp":"DayTrp", "WeightSSH_g":"Sex", "HRsize", 
+                "ACRU_CN_mean":"VAAN_NP_CVar")
+
+# use this code when knitting to html
+kable(hare.stoich) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                fixed_thead = TRUE) %>% scroll_box(width = "100%",
+                                                   height = "500px")
+
+# use this code when knitting to pdf
+# kable(head(hare.stoich), "latex", booktabs = TRUE) %>% 
+#   kable_styling(latex_options = "scale_down", position = "center")
+```
+
+<!-- > **Note** In the code below, I fit `Year` as a random effect. Another -->
+<!-- random effect I considered fitting is ID of the individual, as characterized by -->
+<!-- the variable `EarTag`, nested under `Year` (e.g., `1|Year/EarTag`). This,  -->
+<!-- I believe, should capture the fact that some individuals (n=2, as per my current  -->
+<!-- best estimate) survived multiple years and had their collars changed during this -->
+<!-- time. -->
+
+<!-- Anne suggested I use the `weights` argument in `lmer` to account for  -->
+<!-- variability in the stoichiometric ratios values, in this case using  -->
+<!-- the SD around the mean values. This argument allows to account for the  -->
+<!-- higher/lower spread around a mean value while still using a normal error  -->
+<!-- distribution and an average ratio value as predictor variable.  -->
+<!-- I am **not** currently doing this. -->
+
+<!-- As of `r as.Date('14-01-2020')`, I am randomly removing one of each  -->
+<!-- pseudoreplicated entries --- i.e. those hares that have triangulation data for  -->
+<!-- 2 or more consecutive years, to see if this solves the problem of singular fit in  -->
+<!-- the mixed effects models. The code chunk below performs this random draw from the -->
+<!-- pseduoreplicated entries and stores the resulting dataset into a new object  -->
+<!-- called `hare.stoich.clean`. -->
+
+```{r pseudorep-randomsample, eval=FALSE, include=FALSE, tidy=TRUE}
+# Note, this code is not in use anymore since we focus on the most data rich 
+# years to estimate the home range size of individuals with more than 1 year of
+# telemetry sampling
+
+# This code chunk randomly draws one out of each pair of pseudoreplicated entries
+# in the hareData dataset (i.e., the entries with more than 1 year of sampling data)
+hare.stoich.clean <- do.call(rbind, lapply(split(hare.stoich, 
+                                                 hare.stoich$EarTag), 
+                                           function(x) x[sample(nrow(x), 1), ]))
+# use this code when knitting to html
+kable(hare.stoich.clean) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                fixed_thead = TRUE) %>%
+  scroll_box(width = "100%", height = "500px")
+
+# use this code when knitting to pdf
+# kable(head(hare.stoich.clean), "latex", booktabs = TRUE) %>% 
+#   kable_styling(latex_options = "scale_down", position = "center")
+```
+
+Now that data from all individuals (n = `r length(unique(hare.stoich$EarTag))`) 
+needed to perform these analyses are in a single dataset, `hare.stoich`, 
+it is time to start some modelling. We begin by running some simple linear models 
+to test the effect of `Sampling Year` on the size of the hares' home ranges.
+We then move on to models that only include the mean or coefficient of variation 
+(CV) values for the three stoichiometric ratios of interest (C:N, C:P, N:P) from
+the two plant species we have StDMs predictions for. We then introduce 
+`Body Weight` as an alternative, additional covariate influencing home range size. 
+Finally, we introduce additive and interactive effects of mean and CV of the 
+ratios mentioned above.
+
+<!-- Further down the line, I change from using linear models to using linear mixed  -->
+<!-- effects models with `Sampling Year` fitted as a random effect to account for  -->
+<!-- intrinsic yearly variation in home range size due to varying density of hares  -->
+<!-- in our study area --- and thus potential competition effects arising among the  -->
+<!-- various individuals. -->
+
+<!-- # Linear Models -->
+
+## Testing the Effect due to Sampling Year
+
+### Data-richness-based selection
+An alternative element that may be influencing whether we have an effect of 
+Sampling Year or not is the amount of telemetry data collected for a given 
+individual in each sampling season. In the code chunk below, we fit a model of 
+home range size as a function of sampling year using data only for the most 
+data-rich year for the individuals that have two or more years of sampling.
+
+```{r year-model-3, echo=TRUE, message=FALSE, warning=FALSE, tidy=TRUE}
+# remove home range estimates and stoich data from data-poor years, for pseudoreplicated individuals
+hare.rich <- subset(hare.stoich, hare.stoich$CollarFrequency != "149.653" & 
+                      hare.stoich$CollarFrequency != "149.053" & 
+                      hare.stoich$CollarFrequency != "149.003" & 
+                      hare.stoich$CollarFrequency != "149.274")
+
+hare.rich.mod <- lm(HRsize ~ SamplingYear, data = hare.rich) 
+
+summary(hare.rich.mod)
+lindia::gg_diagnose(hare.rich.mod)
+
+ggplot(data = hare.rich, aes(x = SamplingYear, y = HRsize)) + 
+  geom_boxjitter(outlier.intersect = TRUE) + xlab("Sampling Year") + 
+  ylab("Home Range Size (ha)") + 
+  theme_classic() + theme(text = element_text(size = 18))
+
+# ggsave(filename = "../Results/HRsizeDataRich.png")
+
+# write.csv(hare.rich, file = "../Results/HareRichStoich_50kUD.csv")
+```
+
+### Random draw of pseudoreplicates
+Here, we randomly sample the four pairs of pseudoreplicated home range estimates
+and run a simple linear model including only the sampling year as an explanatory 
+variable for 100 times. This allows us to assess whether there is variation in 
+home range size that we can ascribe to year [@Borger2006].
+
+```{r year-models-1, echo=TRUE, message=FALSE, warning=FALSE, tidy=TRUE}
+
+hare.pseudo <- vector("list", length = 100)
+year_mods <- vector("list", length = 100) 
+
+for (i in 1:length(year_mods)) {
+
+hare.pseudo[[i]] <- do.call(rbind, lapply(split(hare.stoich, 
+                                                hare.stoich$EarTag), 
+                                          function(x) x[sample(nrow(x), 1), ]))
+
+year_mods[[i]] <- lm(HRsize ~ SamplingYear, data = hare.pseudo[[i]]) 
+
+# gg_diagnose(year_mods[[i]])
+
+# browser()
+}
+
+yearmods_kab <- purrr::map_dfr(year_mods, broom::tidy, .id = "model")
+
+# use this code when knitting to html
+kable(yearmods_kab) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                fixed_thead = TRUE) %>%
+  pack_rows(index = table(fct_inorder(yearmods_kab$model))) %>%
+  scroll_box(width = "100%", height = "500px")
+
+# use this code when knitting to pdf
+# kable(head(yearmods_kab), "latex", booktabs = TRUE) %>% 
+#   kable_styling(latex_options = "scale_down", position = "center") %>% 
+#   pack_rows(index = table(fct_inorder(yearmods_kab$model)), 
+#             indent = FALSE, bold = TRUE)
+```
+
+### Year-based selection
+It is possible that the increasing temporal distance between the plant 
+stoichiometric data collected in 2016 and the snowshoe hare telemetry data 
+collected in 2017, 2018, and 2019 may be affecting the results of the models
+including only Sampling Year. To test for this, the code chunk below runs a 
+model on a dataset of home range size estimate that include data based on when 
+they were collected: for individuals with 2 or more years of data collection, we 
+include only the home range size estimate obtained from the year closer to the 
+plant sampling.
+
+```{r year-models-2, echp=TRUE, message=FALSE, warning=FALSE, tidy=TRUE}
+# remove home range estimates and stoich data from home range estimates further away from 2016, for pseudoreplicated individuals
+hare.year <- subset(hare.stoich, hare.stoich$CollarFrequency != "150.173" & 
+                      hare.stoich$CollarFrequency != "149.294" & 
+                      hare.stoich$CollarFrequency != "149.003" & 
+                      hare.stoich$CollarFrequency != "150.314")
+
+hare.year.mod <- lm(HRsize ~ SamplingYear, data = hare.year) 
+
+summary(hare.year.mod)
+lindia::gg_diagnose(hare.year.mod)
+
+ggplot(data = hare.year, aes(x = SamplingYear, y = HRsize)) + 
+  geom_boxjitter(outlier.intersect = TRUE) + xlab("Sampling Year") + 
+  labs(y=expression("Home range size (ha) - 50% kUD")) + 
+  theme_classic() + theme(text = element_text(size = 18))
+
+# ggsave(filename = "../Results/HRsizeSYear.png")
+```
+
+Following these analyses, we do not include the variable `SamplingYear` in the 
+models below as there is no evidence of this variable having an effect on home 
+range size (see above). Furthermore, we use the `hare.rich` dataset to perform 
+all analyses, to include only home range estimates from the years with the higher 
+number of data points for those individuals for which we have more than one year 
+of telemetry sampling.
+
+Below, we report the results of each model grouped by species and stoichiometric 
+ratio combination. Each set of analyses includes 8 models and a null model, as 
+well as an AICc summary table. In the following, **CV**: coefficient of 
+variation, i.e. the SD:mean ratio.
+
+**Note**: To improve readability and keeping this document to a manageable 
+length, we organized the following sections as tabsets. Each tab contains the
+code to run the model named in the tab header and visualize its summary and 
+diagnotic plots. For the top-ranked models in the AICc table at the bottom of this section, we additionally present a graph
+showing the difference between the observed home range size and that
+predicted by the model.
+
+
+## Red Maple C:N  {.tabset .tabset-fade .tabset-pills}
+
+Click on each tab to see the summary and diagnostic plots for each model.
+
+### Intercept-only
+```{r ACRU-CN-null, echo=TRUE, tidy=TRUE, warning=FALSE}
+# Red Maple CN mean
+acrucnnull <- lm(HRsize ~ 1, data = hare.rich)
+
+# check model output
+summary(acrucnnull)
+```
+
+### Mean-only
+```{r ACRU-CN-only, echo=TRUE, tidy=TRUE, warning=FALSE}
+# Red Maple CN mean
+acruCNhr <- lm(HRsize ~ ACRU_CN_mean, data = hare.rich)
+
+# check model output
+summary(acruCNhr)
+```
+
+*Diagnostic plots*
+```{r ACRU-CN-only-diag, echo=TRUE, tidy=TRUE}
+# diagnostic plots using lindia package
+
+gg_diagnose(acruCNhr, theme = theme_classic())
+```
+
+### Coeff. Var.-only
+```{r ACRU-CN-cv-only, echo=TRUE, tidy=TRUE, warning=FALSE}
+acruCNcvhr <- lm(HRsize ~ ACRU_CN_CVar, data = hare.rich)
+
+# check model output
+summary(acruCNcvhr)
+# confint(acruCNcvhr)
+```
+
+*Diagnostic plots*
+```{r ACRU-CN-cv-only-diag, echo=TRUE, tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(acruCNcvhr, theme = theme_classic())
+```
+
+### Mean + Weight
+```{r ACRU-CN-multi,echo=TRUE,tidy=TRUE}
+# 1. Red Maple CN mean
+acruCNhr.exp <- lm(HRsize ~ ACRU_CN_mean + WeightSSH_g, data = hare.rich)
+
+# check model output
+summary(acruCNhr.exp)
+```
+
+*Diagnostic Plots*
+```{r ACRU-CN-multi-diag,echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(acruCNhr.exp, theme = theme_classic())
+```
+
+### Coeff. Var. + Weight
+```{r ACRU-CN-multi-cv,echo=TRUE,tidy=TRUE}
+acruCNcv.exp <- lm(HRsize ~ ACRU_CN_CVar + WeightSSH_g, data = hare.rich)
+
+# check model output
+summary(acruCNcv.exp)
+```
+
+*Diagnostic Plots*
+```{r ACRU-CN-multi-cv-diag,echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(acruCNcv.exp, theme = theme_classic())
+```
+
+### Mean + Coeff. Var.
+```{r plus-stoich-acrucn-1, echo=TRUE, tidy=TRUE}
+acrucn.plus <- lm(HRsize ~ ACRU_CN_mean+ACRU_CN_CVar, data = hare.rich)
+
+summary(acrucn.plus)
+# confint(acrucn.plus)
+```
+
+*Diagnostic Plots*
+```{r p-acrucn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrucn.plus, theme = theme_classic())
+```
+
+### Mean * Coeff. Var.
+```{r joint-stoich-acrucn-2, echo=TRUE, tidy=TRUE}
+acrucn.joint <- lm(HRsize ~ ACRU_CN_mean*ACRU_CN_CVar, data = hare.rich)
+
+summary(acrucn.joint)
+```
+
+*Diagnostic Plots*
+```{r js-acrucn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrucn.joint, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r data-vs-pred-acrucn-4, echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(acrucn.joint, se_fit = TRUE) %>% 
+  dplyr::select(-.rownames) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.se.fit, -.resid,-.std.resid, -.hat, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `ACRU_CN_mean` = "Red Maple Average C:N",
+  `ACRU_CN_CVar` = "Red Maple C:N Coefficient of Variation"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha)") +
+  ggtitle("50% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", 
+             labeller = as_labeller(covariates_names), 
+             strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+### Mean + Coeff. Var. + Weight
+```{r stoich-weight-acrucn-1, echo=TRUE, tidy=TRUE}
+acrucn.sw <- lm(HRsize ~ ACRU_CN_mean+ACRU_CN_CVar+WeightSSH_g, 
+                data = hare.rich)
+
+summary(acrucn.sw)
+```
+
+*Diagnostic Plots*
+```{r sw-acrucn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrucn.sw, theme = theme_classic())
+```
+
+### Mean * Coeff. Var. + Weight
+```{r jsw-stoich-acrucn-2, echo=TRUE, tidy=TRUE}
+acrucn.jsw <- lm(HRsize ~ ACRU_CN_mean*ACRU_CN_CVar+WeightSSH_g, 
+                 data = hare.rich)
+
+summary(acrucn.jsw)
+```
+
+*Diagnostic Plots*
+```{r jsw-acrucn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrucn.jsw, theme = theme_classic())
+```
+
+### AICc Table
+```{r acrucn-aicc-tab, echo=TRUE, tidy=TRUE}
+# Create a list of the different models fitted so far
+mods.50 <- list()
+mods.50[[1]] <- acruCNhr
+mods.50[[2]] <- acruCNcvhr
+mods.50[[3]] <- acruCNhr.exp
+mods.50[[4]] <- acruCNcv.exp
+mods.50[[5]] <- acrucn.plus
+mods.50[[6]] <- acrucn.joint
+mods.50[[7]] <- acrucn.sw
+mods.50[[8]] <- acrucn.jsw
+mods.50[[9]] <- acrucnnull
+
+# Create a list of model names to be used in the AIC table
+mods.names <- c("HRsize ~ Mean C:N", "HRsize ~ C:N CV",
+                "HRsize ~ Mean C:N + Weight", "HRsize ~ C:N CV + Weight", 
+                "HRsize ~ Mean C:N + C:N CV", "HRsize ~ Mean C:N * CV C:N", 
+                "HRsize ~ Mean C:N + C:N CV + Weight", 
+                "HRsize ~ Mean C:N * C:N CV + Weight", "Intercept")
+
+# Create the AIC table
+acruCN_aicctab <- aictab(mods.50, modnames = mods.names, second.ord = T, sort = T)
+
+# Allocate and populate a list of adjusted R square values following the same 
+# order as the best of model created up off
+
+rsq <- list()
+for (i in 1:length(mods.50)) {
+  rsq[[i]] <- summary(mods.50[[i]])$r.squared
+}
+# add names to the adjusted R square values list
+names(rsq) <- mods.names
+rsqdf <- enframe(rsq, name = "Modnames", value = "Rsq") %>% 
+  unnest(cols = c("Modnames", "Rsq"))
+
+rsqdf$Modnames <- as_factor(rsqdf$Modnames)
+
+# save the now complete AIC table as new object
+acruCNaicRsq <- acruCN_aicctab %>% merge(., rsqdf) %>% arrange(., Delta_AICc)  
+
+# Generate publication quality AIC table (knit to pdf)
+gt(acruCNaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>%
+  tab_header("Model Selection for Red Maple C:N") %>%
+  cols_label(Modnames ="Models formula", K = "K", AICc = "AICc",
+             Delta_AICc = html("&Delta; AICc"), ModelLik ="Model Likelihood",
+             AICcWt = "AICc Weight", LL ="Log-Lik",
+             Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>")) 
+```
+
+## Blueberry C:N  {.tabset .tabset-fade .tabset-pills}
+
+Click on each tab to see the summary and diagnostic plots for each model. 
+
+### Intercept-only
+```{r VAAN-CN-null, echo=TRUE, tidy=TRUE}
+# 2. Blueberry CN mean
+vaancnnull <- lm(HRsize ~ 1, data = hare.rich)
+
+summary(vaancnnull)
+```
+
+### Mean-only
+```{r VAAN-CN-only, echo=TRUE, tidy=TRUE}
+# 2. Blueberry CN mean
+vaanCNhr <- lm(HRsize ~ VAAN_CN_mean, data = hare.rich)
+
+summary(vaanCNhr)
+```
+
+*Diagnostic plots*
+```{r VAAN-CN-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+
+gg_diagnose(vaanCNhr, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r data-vs-pred-vaancn-1, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+hare.predplot <- augment(vaanCNhr, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+
+ggplot(hare.predplot, aes(x = VAAN_CN_mean, y = HRsize)) +
+  geom_segment(aes(xend = VAAN_CN_mean, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("Average Blueberry C:N") +
+  ylab("Home Range size (ha) 50% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  theme_few() + 
+  theme(text = element_text(size = 20))
+```
+
+### Coeff. Var.-only
+```{r VAAN-CN-cv-only, echo=TRUE, tidy=TRUE}
+vaanCNcvhr <- lm(HRsize ~ VAAN_CN_CVar, data = hare.rich)
+
+summary(vaanCNcvhr)
+```
+
+*Diagnostic plots*
+```{r VAAN-CN-cv-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(vaanCNcvhr, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r data-vs-pred-vaancn-2, echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+hare.predplot <- augment(vaanCNcvhr, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+
+ggplot(hare.predplot, aes(x = VAAN_CN_CVar, y = HRsize)) +
+  geom_segment(aes(xend = VAAN_CN_CVar, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("Blueberry C:N Coefficient of Variation") +
+  ylab("Home Range size (ha)") +
+  ggtitle("50% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  theme_few() +
+  theme(text = element_text(size = 20))
+```
+
+### Mean + Weight
+```{r VAAN-CN-multi,echo=TRUE,tidy=TRUE}
+# 2. Blueberry CN mean
+vaanCNhr.exp <- lm(HRsize ~ VAAN_CN_mean + WeightSSH_g, data = hare.rich)
+
+summary(vaanCNhr.exp)
+
+# confint(vaanCNhr.exp)
+```
+
+*Diagnostic Plots*
+```{r VAAN-CN-multi-diag,echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(vaanCNhr.exp, theme = theme_classic())
+```
+
+### Coeff. Var. + Weight
+```{r VAAN-CN-multi-cv,echo=TRUE,tidy=TRUE}
+vaanCNcv.exp <- lm(HRsize ~ VAAN_CN_CVar + WeightSSH_g, data = hare.rich)
+
+summary(vaanCNcv.exp)
+
+# ggplot(data = hare.rich, aes(x = hare.rich$VAAN_CN_CVar, 
+# y = hare.rich$HRsize)) + geom_point(aes(fill = WeightSSH_g), 
+# shape = 21, size = 6) + geom_smooth(method = "lm") + 
+# xlab("Coefficient of Variation of Blueberry C:N") + 
+# ylab( "Home range size (ha)") + theme_classic() + 
+# guides(fill=guide_legend(title="Weight (g)")) + 
+# theme(text = element_text(size = 18))
+
+# ggsave("../Results/HRvsCNCVar.png", height = 8, width = 12)
+```
+
+*Diagnostic Plots*
+```{r VAAN-CN-multi-cv-diag,echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(vaanCNcv.exp, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r data-vs-pred-vaancn-3, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(vaanCNcv.exp, se_fit = TRUE)  %>% 
+  dplyr::select(-.rownames) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.se.fit, -.resid,-.std.resid, -.hat, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `VAAN_CN_CVar` = "Blueberry C:N Coefficient of Variation",
+  `WeightSSH_g` = "Snowshoe hare body weight (g)"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha)") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", 
+             labeller = as_labeller(covariates_names), 
+             strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+### Mean + Coeff. Var.
+```{r plus-stoich-vaancn-1, echo=TRUE, tidy=TRUE}
+vaancn.plus <- lm(HRsize ~ VAAN_CN_mean+VAAN_CN_CVar, data = hare.rich)
+
+summary(vaancn.plus) 
+
+# confint(vaancn.plus)
+```
+
+*Diagnostic Plots*
+```{r p-vaancn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancn.plus, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r data-vs-pred-vaancn-4, echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(vaancn.plus, se_fit = TRUE)  %>% 
+  dplyr::select(-.rownames) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.se.fit, -.resid,-.std.resid, -.hat, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `VAAN_CN_mean` = "Blueberry Average C:N",
+  `VAAN_CN_CVar` = "Blueberry C:N  Coefficient of Variation"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha)") +
+  ggtitle("50% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", 
+             labeller = as_labeller(covariates_names), 
+             strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+### Mean * Coeff. Var.
+```{r joint-stoich-vaancn-2, echo=TRUE, tidy=TRUE}
+vaancn.joint <- lm(HRsize ~ VAAN_CN_mean*VAAN_CN_CVar, data = hare.rich)
+
+summary(vaancn.joint)
+
+confint(vaancn.joint)
+```
+
+*Diagnostic Plots*
+```{r js-vaancn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancn.joint, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r data-vs-pred-vaancn-5, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(vaancn.joint, se_fit = TRUE)  %>% 
+  dplyr::select(-.rownames) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.se.fit, -.resid,-.std.resid, -.hat, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `VAAN_CN_mean` = "Blueberry Average C:N",
+  `VAAN_CN_CVar` = "Blueberry C:N  Coefficient of Variation"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha)") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", 
+             labeller = as_labeller(covariates_names), 
+             strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+### Mean + Coeff. Var. + Weight
+```{r stoich-weight-vaancn-1, echo=TRUE, tidy=TRUE}
+vaancn.sw <- lm(HRsize ~ VAAN_CN_mean+VAAN_CN_CVar+WeightSSH_g, 
+                data = hare.rich)
+
+summary(vaancn.sw)
+
+# confint(vaancn.sw)
+```
+
+*Diagnostic Plots*
+```{r sw-vaancn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancn.sw, theme = theme_classic())
+```
+
+### Mean * Coeff. Var. + Weight
+```{r jsw-stoich-vaancn-2, echo=TRUE, tidy=TRUE}
+vaancn.jsw <- lm(HRsize ~ VAAN_CN_mean*VAAN_CN_CVar+WeightSSH_g, 
+                 data = hare.rich)
+
+summary(vaancn.jsw)
+```
+
+*Diagnostic Plots*
+```{r jsw-vaancn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancn.jsw, theme = theme_classic())
+```
+
+### AICc Table
+```{r vaancn-aicc-tab, echo=TRUE, tidy=TRUE}
+mods.50 <- list()
+mods.50[[1]] <- vaanCNhr
+mods.50[[2]] <- vaanCNcvhr
+mods.50[[3]] <- vaanCNhr.exp
+mods.50[[4]] <- vaanCNcv.exp
+mods.50[[5]] <- vaancn.plus
+mods.50[[6]] <- vaancn.joint
+mods.50[[7]] <- vaancn.sw
+mods.50[[8]] <- vaancn.jsw
+mods.50[[9]] <- vaancnnull
+
+mods.names <- c("HRsize ~ Mean C:N", #1
+  "HRsize ~ C:N CV", #2
+  "HRsize ~ Mean C:N + Weight", #3
+  "HRsize ~ C:N CV + Weight", #4
+  "HRsize ~ Mean C:N + C:N CV", #5
+  "HRsize ~ Mean C:N * C:N CV", #6
+  "HRsize ~ Mean C:N + C:N CV + Weight", #7
+  "HRsize ~ Mean C:N * C:N CV + Weight", #8
+  "Intercept"
+)
+
+vaanCN_aicctab <- aictab(mods.50, modnames = mods.names, second.ord = T, 
+                         sort = T)
+
+# Allocate and populate a list of adjusted R square values following the same 
+# order as the list of model created above
+rsq <- list()
+
+for (i in 1:length(mods.50)) {
+  rsq[[i]] <- summary(mods.50[[i]])$r.squared
+}
+
+# add names to the adjusted R square values list
+names(rsq) <- mods.names
+
+rsqdf <- enframe(rsq, name = "Modnames", value = "Rsq") %>% 
+  unnest(cols = c("Modnames", "Rsq"))
+
+# save the now complete AICc table to a new object
+vaanCNaicRsq <- vaanCN_aicctab %>% merge(., rsqdf) %>% arrange(., Delta_AICc) 
+
+gt(vaanCNaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
+  tab_header("Model Selection for Blueberry C:N") %>% 
+    cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", 
+             Delta_AICc = html("&Delta; AICc"), ModelLik ="Model Likelihood", 
+             AICcWt = "AICc Weight", LL ="Log-Lik", 
+             Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+```
+
+## Red Maple N:P  {.tabset .tabset-fade .tabset-pills}
+
+Click on each tab to see the summary and diagnostic plots for each model.
+
+### Intercept-only
+```{r ACRU-NP-null, echo=TRUE, tidy=TRUE}
+# 3. Red Maple NP mean
+acrunpnull <- lm(HRsize ~ 1, data = hare.rich)
+
+summary(acrunpnull)
+```
+
+### Mean-only
+```{r ACRU-NP-only, echo=TRUE, tidy=TRUE}
+# 3. Red Maple NP mean
+acruNPhr <- lm(HRsize ~ ACRU_NP_mean, data = hare.rich)
+
+summary(acruNPhr)
+# confint(acruNPhr)
+```
+
+*Diagnostic plots*
+```{r ACRU-NP-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+
+gg_diagnose(acruNPhr, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r data-vs-pred-acrunp-1, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+hare.predplot <- augment(acruNPhr, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+
+ggplot(hare.predplot, aes(x = ACRU_NP_mean, y = HRsize)) +
+  geom_segment(aes(xend = ACRU_NP_mean, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("Average Red Maple N:P") +
+  ylab("Home Range size (ha)") +
+  ggtitle("50% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  theme_few() +
+  theme(text = element_text(size = 20))
+```
+
+### Coeff. Var.-only
+```{r ACRU-NP-cv-only, echo=TRUE, tidy=TRUE}
+acruNPcvhr <- lm(HRsize ~ ACRU_NP_CVar, data = hare.rich)
+
+summary(acruNPcvhr)
+
+confint(acruNPcvhr)
+```
+
+*Diagnostic plots*
+```{r ACRU-NP-cv-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(acruNPcvhr, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r data-vs-pred-acrunp-2, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+hare.predplot <- augment(acruNPcvhr, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+
+ggplot(hare.predplot, aes(x = ACRU_NP_CVar, y = HRsize)) +
+  geom_segment(aes(xend = ACRU_NP_CVar, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("Average Red Maple N:P") +
+  ylab("Home Range size (ha)") +
+  ggtitle("50% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  theme_few() +
+  theme(text = element_text(size = 20))
+```
+
+### Mean + Weight
+```{r ACRU-NP-multi,echo=TRUE,tidy=TRUE}
+# 3. Red Maple NP mean
+acruNPhr.exp <- lm(HRsize ~ ACRU_NP_mean + WeightSSH_g, data = hare.rich)
+
+summary(acruNPhr.exp)
+```
+
+*Diagnostic Plots*
+```{r ACRU-NP-multi-diag,echo=TRUE,tidy=TRUE}
+gg_diagnose(acruNPhr.exp, theme = theme_classic())
+```
+
+### Coeff. Var. + Weight
+```{r ACRU-NP-multi-cv,echo=TRUE,tidy=TRUE}
+acruNPcv.exp <- lm(HRsize ~ ACRU_NP_CVar + WeightSSH_g, data = hare.rich)
+
+summary(acruNPcv.exp)
+
+confint(acruNPcv.exp)
+```
+
+*Diagnostic Plots*
+```{r ACRU-NP-multi-cv-diag,echo=TRUE,tidy=TRUE}
+gg_diagnose(acruNPcv.exp, theme = theme_classic())
+```
+
+### Mean + Coeff. Var.
+```{r plus-stoich-acrunp-1, echo=TRUE, tidy=TRUE}
+acrunp.plus <- lm(HRsize ~ ACRU_NP_mean+ACRU_NP_CVar, data = hare.rich)
+
+summary(acrunp.plus)
+
+confint(acrunp.plus)
+```
+
+*Diagnostic Plots*
+```{r p-acrunp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrunp.plus, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r data-vs-pred-acrunp-3, echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(acrunp.plus, se_fit = TRUE)  %>% 
+  dplyr::select(-.rownames) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.se.fit, -.resid,-.std.resid, -.hat, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `ACRU_NP_mean` = "Red Maple Average N:P",
+  `ACRU_NP_CVar` = "Red Maple N:P Coefficient of Variation"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha)") +
+  ggtitle("50% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", 
+             labeller = as_labeller(covariates_names), 
+             strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+### Mean * Coeff. Var.
+```{r joint-stoich-acrunp-2, echo=TRUE, tidy=TRUE}
+acrunp.joint <- lm(HRsize ~ ACRU_NP_mean*ACRU_NP_CVar, data = hare.rich)
+
+summary(acrunp.joint)
+
+# confint(acrunp.joint)
+```
+
+*Diagnostic Plots*
+```{r js-acrunp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrunp.joint, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r data-vs-pred-acrunp-4, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(acrunp.joint, se_fit = TRUE) %>% 
+  dplyr::select(-.rownames) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.se.fit, -.resid,-.std.resid, -.hat, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `ACRU_NP_mean` = "Red Maple Average N:P",
+  `ACRU_NP_CVar` = "Red Maple N:P Coefficient of Variation"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha)") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", 
+             labeller = as_labeller(covariates_names), 
+             strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+### Mean + Coeff. Var. + Weight
+```{r stoich-weight-acrunp-1, echo=TRUE, tidy=TRUE}
+acrunp.sw <- lm(HRsize ~ ACRU_NP_mean+ACRU_NP_CVar+WeightSSH_g, 
+                data = hare.rich)
+
+summary(acrunp.sw)
+
+# confint(acrunp.sw)
+```
+
+*Diagnostic Plots*
+```{r sw-acrunp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrunp.sw, theme = theme_classic())
+```
+
+### Mean * Coeff. Var. + Weight
+```{r jsw-stoich-acrunp-2, echo=TRUE, tidy=TRUE}
+acrunp.jsw <- lm(HRsize ~ ACRU_NP_mean*ACRU_NP_CVar+WeightSSH_g, 
+                 data = hare.rich)
+
+summary(acrunp.jsw)
+```
+
+*Diagnostic Plots*
+```{r jsw-acrunp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(acrunp.jsw, theme = theme_classic())
+```
+
+### AICc Table
+```{r acrunp-aicc-tab, echo=TRUE, tidy=TRUE}
+mods.50 <- list()
+mods.50[[1]] <- acruNPhr
+mods.50[[2]] <- acruNPcvhr
+mods.50[[3]] <- acruNPhr.exp
+mods.50[[4]] <- acruNPcv.exp
+mods.50[[5]] <- acrunp.plus
+mods.50[[6]] <- acrunp.joint
+mods.50[[7]] <- acrunp.sw
+mods.50[[8]] <- acrunp.jsw
+mods.50[[9]] <- acrunpnull
+
+mods.names <- c("HRsize ~ Mean N:P", #1
+  "HRsize ~ N:P CV", #2
+  "HRsize ~ Mean N:P + Weight", #3
+  "HRsize ~ N:P CV + Weight", #4
+  "HRsize ~ Mean N:P + N:P CV", #5
+  "HRsize ~ Mean N:P * N:P CV", #6
+  "HRsize ~ Mean N:P + N:P CV + Weight", #7
+  "HRsize ~ Mean N:P * N:P CV + Weight", #8
+  "Intercept" #9
+)
+
+acruNP_aicctab <- aictab(mods.50, modnames = mods.names, second.ord = T, 
+                         sort = T)
+
+# Allocate and populate a list of adjusted R square values following the same 
+# order as the best of model created up off
+rsq <- list()
+for (i in 1:length(mods.50)) {
+  rsq[[i]] <- summary(mods.50[[i]])$r.squared
+}
+# add names to the adjusted R square values list
+names(rsq) <- mods.names
+rsqdf <- enframe(rsq, name = "Modnames", value = "Rsq") %>% 
+  unnest(cols = c("Modnames", "Rsq"))
+
+rsqdf$Modnames <- as_factor(rsqdf$Modnames)
+
+# save the now complete AICc table to a new object
+acruNPaicRsq <- acruNP_aicctab %>% merge(., rsqdf) %>% arrange(., Delta_AICc) 
+
+# create publication-quality AICc table
+gt(acruNPaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
+  tab_header("Model Selection for Red Maple N:P") %>% 
+    cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", 
+             Delta_AICc = "Delta AICc", ModelLik ="Model Likelihood", 
+             AICcWt = "AICc Weight", LL ="Log-Lik", 
+             Cum.Wt = "Cumulative Weight", Rsq = "R sq.")
+```
+
+
+## Blueberry N:P  {.tabset .tabset-fade .tabset-pills}
+
+Click on each tab to see the summary and diagnostic plots for each model.
+
+### Intercept-only
+```{r VAAN-NP-null, echo=TRUE, tidy=TRUE}
+# 4. Blueberry NP mean
+vaannpnull <- lm(HRsize ~ 1, data = hare.rich)
+
+summary(vaannpnull)
+```
+
+### Mean-only
+```{r VAAN-NP-only, echo=TRUE, tidy=TRUE}
+# 4. Blueberry NP mean
+vaanNPhr <- lm(HRsize ~ VAAN_NP_mean, data = hare.rich)
+
+summary(vaanNPhr)
+```
+
+*Diagnostic plots*
+```{r VAAN-NP-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+
+gg_diagnose(vaanNPhr, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r data-vs-pred-vaannp-1, echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+hare.predplot <- augment(vaanNPhr, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+
+ggplot(hare.predplot, aes(x = VAAN_NP_mean, y = HRsize)) +
+  geom_segment(aes(xend = VAAN_NP_mean, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("Average Blueberry N:P") +
+  ylab("Home Range size (ha)") +
+  ggtitle("50% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  theme_few()
+```
+
+### Coeff. Var.-only
+```{r VAAN-NP-cv-only, echo=TRUE, tidy=TRUE}
+vaanNPcvhr <- lm(HRsize ~ VAAN_NP_CVar, data = hare.rich)
+
+summary(vaanNPcvhr)
+```
+
+*Diagnostic plots*
+```{r VAAN-NP-cv-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(vaanNPcvhr, theme = theme_classic())
+```
+
+### Mean + Weight
+```{r VAAN-NP-multi,echo=TRUE,tidy=TRUE}
+vaanNPhr.exp <- lm(HRsize ~ VAAN_NP_mean + WeightSSH_g, data = hare.rich)
+
+summary(vaanNPhr.exp)
+
+# confint(vaanNPhr.exp)
+```
+
+*Diagnostic Plots*
+```{r VAAN-NP-multi-diag,echo=TRUE,tidy=TRUE}
+gg_diagnose(vaanNPhr.exp, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r data-vs-pred-vaannp-2, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(vaanNPhr.exp, se_fit = TRUE)  %>% 
+  dplyr::select(-.rownames) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.se.fit, -.resid,-.std.resid, -.hat, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `VAAN_NP_mean` = "Average Blueberry N:P",
+  `WeightSSH_g` = "Snowshoe hare body weight (g)"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha)") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", 
+             labeller = as_labeller(covariates_names), 
+             strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+### Coeff. Var. + Weight
+```{r VAAN-NP-multi-cv,echo=TRUE,tidy=TRUE}
+vaanNPcv.exp <- lm(HRsize ~ VAAN_NP_CVar + WeightSSH_g, data = hare.rich)
+
+summary(vaanNPcv.exp)
+```
+
+*Diagnostic Plots*
+```{r VAAN-NP-multi-cv-diag,echo=TRUE,tidy=TRUE}
+gg_diagnose(vaanNPcv.exp, theme = theme_classic())
+```
+
+### Mean + Coeff. Var.
+```{r plus-stoich-vaannp-1, echo=TRUE, tidy=TRUE}
+vaannp.plus <- lm(HRsize ~ VAAN_NP_mean+VAAN_NP_CVar, data = hare.rich)
+
+summary(vaannp.plus)
+
+# confint(vaannp.plus)
+```
+
+*Diagnostic Plots*
+```{r p-vaannp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaannp.plus, theme = theme_classic())
+```
+
+### Mean * Coeff. Var.
+```{r joint-stoich-vaannp-2, echo=TRUE, tidy=TRUE}
+vaannp.joint <- lm(HRsize ~ VAAN_NP_mean*VAAN_NP_CVar, data = hare.rich)
+
+summary(vaannp.joint)
+
+# confint(vaannp.joint)
+```
+
+*Diagnostic Plots*
+```{r js-vaannp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaannp.joint, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r data-vs-pred-vaannp-4, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(vaannp.joint, se_fit = TRUE)  %>% 
+  dplyr::select(-.rownames) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.se.fit, -.resid,-.std.resid, -.hat, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `VAAN_NP_mean` = "Blueberry Average N:P",
+  `VAAN_NP_CVar` = "Blueberry N:P Coefficient of Variation"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha)") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", 
+             labeller = as_labeller(covariates_names), 
+             strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+### Mean + Coeff. Var. + Weight
+```{r stoich-weight-vaannp-1, echo=TRUE, tidy=TRUE}
+vaannp.sw <- lm(HRsize ~ VAAN_NP_mean+VAAN_NP_CVar+WeightSSH_g, 
+                data = hare.rich)
+
+summary(vaannp.sw)
+```
+
+*Diagnostic Plots*
+```{r sw-vaannp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaannp.sw, theme = theme_classic())
+```
+
+### Mean * Coeff. Var. + Weight
+```{r jsw-stoich-vaannp-2, echo=TRUE, tidy=TRUE}
+vaannp.jsw <- lm(HRsize ~ VAAN_NP_mean*VAAN_NP_CVar+WeightSSH_g, 
+                 data = hare.rich)
+
+summary(vaannp.jsw)
+```
+
+*Diagnostic Plots*
+```{r jsw-vaannp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaannp.jsw, theme = theme_classic())
+```
+
+### AICc Table
+```{r vaannp-aicc-tab, echo=TRUE, tidy=TRUE}
+mods.50 <- list()
+mods.50[[1]] <- vaanNPhr
+mods.50[[2]] <- vaanNPcvhr
+mods.50[[3]] <- vaanNPhr.exp
+mods.50[[4]] <- vaanNPcv.exp
+mods.50[[5]] <- vaannp.plus
+mods.50[[6]] <- vaannp.joint
+mods.50[[7]] <- vaannp.sw
+mods.50[[8]] <- vaannp.jsw
+mods.50[[9]] <- vaannpnull
+
+mods.names <- c("HRsize ~ Mean N:P", #1
+  "HRsize ~ N:P CV", #2
+  "HRsize ~ Mean N:P + Weight", #3
+  "HRsize ~ N:P CV + Weight", #4
+  "HRsize ~ Mean N:P + N:P CV", #5
+  "HRsize ~ Mean N:P * N:P CV", #6
+  "HRsize ~ Mean N:P + N:P CV + Weight", #7
+  "HRsize ~ Mean N:P * N:P CV + Weight", #8
+  "Intercept" #9
+)
+
+vaanNP_aicctab <- aictab(mods.50, modnames = mods.names, second.ord = T, 
+                         sort = T)
+
+# Allocate and populate a list of adjusted R square values following the same 
+# order as the best of model created up off
+rsq <- list()
+for (i in 1:length(mods.50)) {
+  rsq[[i]] <- summary(mods.50[[i]])$r.squared
+}
+# add names to the adjusted R square values list
+names(rsq) <- mods.names
+rsqdf <- enframe(rsq, name = "Modnames", value = "Rsq") %>% 
+  unnest(cols = c("Modnames", "Rsq"))
+
+rsqdf$Modnames <- as_factor(rsqdf$Modnames)
+
+# save now complete AICc table to a new object
+vaanNPaicRsq <- vaanNP_aicctab %>% merge(., rsqdf) %>% arrange(., Delta_AICc) 
+
+gt(vaanNPaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
+  tab_header("Model Selection for Blueberry N:P") %>% 
+    cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", 
+             Delta_AICc = "Delta AICc", ModelLik ="Model Likelihood", 
+             AICcWt = "AICc Weight", LL ="Log-Lik", 
+             Cum.Wt = "Cumulative Weight", Rsq = "R sq.")
+```
+
+
+## Blueberry C:P  {.tabset .tabset-fade .tabset-pills}
+
+Click on each tab to see the summary and diagnostic plots for each model.
+
+### Intercept-only
+```{r VAAN-CP-null, echo=TRUE, tidy=TRUE}
+# 5. Blueberry CP mean
+vaancpnull <- lm(HRsize ~ 1, data = hare.rich)
+
+summary(vaancpnull)
+```
+
+### Mean-only
+```{r VAAN-CP-only, echo=TRUE, tidy=TRUE}
+# 5. Blueberry CP mean
+vaanCPhr <- lm(HRsize ~ VAAN_CP_mean, data = hare.rich)
+
+summary(vaanCPhr)
+
+confint(vaanCPhr)
+```
+
+*Diagnostic plots*
+```{r VAAN-CP-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+
+gg_diagnose(vaanCPhr, theme = theme_classic())
+```
+
+*Data vs Predicted Plot*
+```{r data-vs-pred-vaancp-1, echo=TRUE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+hare.predplot <- augment(vaanCPhr, se_fit = TRUE) %>% 
+  dplyr::select(-c( .se.fit, .hat:.std.resid)) 
+
+ggplot(hare.predplot, aes(x = VAAN_CP_mean, y = HRsize)) +
+  geom_segment(aes(xend = VAAN_CP_mean, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("Average Blueberry C:P") +
+  ylab("Home Range size (ha)") +
+  ggtitle("50% kUD") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  theme_few()
+```
+
+### Coeff. Var.-only
+```{r VAAN-CP-cv-only, echo=TRUE, tidy=TRUE}
+vaanCPcvhr <- lm(HRsize ~ VAAN_CP_CVar, data = hare.rich)
+
+summary(vaanCPcvhr)
+```
+
+*Diagnostic plots*
+```{r VAAN-CP-cv-only-diag, echo=TRUE,tidy=TRUE}
+# diagnostic plots using lindia package
+gg_diagnose(vaanCPcvhr, theme = theme_classic())
+```
+
+### Mean + Weight
+```{r VAAN-CP-multi,echo=TRUE,tidy=TRUE}
+vaanCPhr.exp <- lm(HRsize ~ VAAN_CP_mean + WeightSSH_g, data = hare.rich)
+
+summary(vaanCPhr.exp)
+
+# confint(vaanCPhr.exp)
+```
+
+*Diagnostic Plots*
+```{r VAAN-CP-multi-diag,echo=TRUE,tidy=TRUE}
+gg_diagnose(vaanCPhr.exp, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r data-vs-pred-vaancp-2, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(vaanCPhr.exp, se_fit = TRUE) %>% 
+  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `VAAN_CP_mean` = "Average Blueberry C:P",
+  `WeightSSH_g` = "Snowshoe hare body weight (g)"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha)") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", 
+             labeller = as_labeller(covariates_names), 
+             strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+### Coeff. Var. + Weight
+```{r VAAN-CP-multi-cv,echo=TRUE,tidy=TRUE}
+vaanCPcv.exp <- lm(HRsize ~ VAAN_CP_CVar + WeightSSH_g, data = hare.rich)
+
+summary(vaanCPcv.exp)
+```
+
+*Diagnostic Plots*
+```{r VAAN-CP-multi-cv-diag,echo=TRUE,tidy=TRUE}
+gg_diagnose(vaanCPcv.exp, theme = theme_classic())
+```
+
+### Mean + Coeff. Var.
+```{r plus-stoich-vaancp-1, echo=TRUE, tidy=TRUE}
+vaancp.plus <- lm(HRsize ~ VAAN_CP_mean+VAAN_CP_CVar, data = hare.rich)
+
+summary(vaancp.plus)
+
+# confint(vaancp.plus)
+```
+
+*Diagnostic Plots*
+```{r p-vaancp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancp.plus, theme = theme_classic())
+```
+
+### Mean * Coeff. Var.
+```{r joint-stoich-vaancp-2, echo=TRUE, tidy=TRUE}
+vaancp.joint <- lm(HRsize ~ VAAN_CP_mean*VAAN_CP_CVar, data = hare.rich)
+
+summary(vaancp.joint)
+```
+
+*Diagnostic Plots*
+```{r jsp-vaancn-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancp.joint, theme = theme_classic())
+```
+
+<!-- *Data vs Predicted Plot* -->
+```{r data-vs-pred-vaancp-3, eval=FALSE, include=FALSE, tidy=TRUE}
+# code from https://drsimonj.svbtle.com/visualising-residuals
+
+hare.predplot <- augment(vaancp.joint, se_fit = TRUE)  %>% 
+  dplyr::select(-.rownames) %>% 
+  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.se.fit, -.resid,-.std.resid, -.hat, -.sigma, -.cooksd)
+
+covariates_names <- c(
+  `VAAN_CP_mean` = "Blueberry Average C:P",
+  `VAAN_CP_CVar` = "Blueberry C:P Coefficient of Variation"
+)
+
+ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
+  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
+  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
+  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
+  geom_point(aes(y = .fitted), shape = 5) +
+  xlab("") +
+  ylab("Home Range size (ha)") +
+  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
+  guides(fill = FALSE, size = FALSE) +
+  facet_wrap(~ Covariate, scales = "free_x", 
+             labeller = as_labeller(covariates_names), 
+             strip.position = "bottom") + 
+  theme_few() +
+  theme(strip.placement = "outside")
+```
+
+### Mean + Coeff. Var. + Weight
+```{r sw-stoich-vaancp-1, echo=TRUE, tidy=TRUE}
+vaancp.sw <- lm(HRsize ~ VAAN_CP_mean+VAAN_CP_CVar+WeightSSH_g, 
+                data = hare.rich)
+
+summary(vaancp.sw)
+```
+
+*Diagnostic Plots*
+```{r sw-vaancp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancp.sw, theme = theme_classic())
+```
+
+### Mean * Coeff. Var. + Weight
+```{r jsw-stoich-vaancp-2, echo=TRUE, tidy=TRUE}
+vaancp.jsw <- lm(HRsize ~ VAAN_CP_mean*VAAN_CP_CVar+WeightSSH_g, 
+                 data = hare.rich)
+
+summary(vaancp.jsw)
+```
+
+*Diagnostic Plots*
+```{r jsw-vaancp-diag, echo=TRUE, tidy=TRUE}
+gg_diagnose(vaancp.jsw, theme = theme_classic())
+```
+
+### AICc Tables
+```{r vaancp-aicc-tab, echo=TRUE, tidy=TRUE}
+mods.50 <- list()
+mods.50[[1]] <- vaanCPhr
+mods.50[[2]] <- vaanCPcvhr
+mods.50[[3]] <- vaanCPhr.exp
+mods.50[[4]] <- vaanCPcv.exp
+mods.50[[5]] <- vaancp.plus
+mods.50[[6]] <- vaancp.joint
+mods.50[[7]] <- vaancp.sw
+mods.50[[8]] <- vaancp.jsw
+mods.50[[9]] <- vaancpnull
+
+mods.names <- c("HRsize ~ Mean C:P", #1
+  "HRsize ~ C:P CV", #2
+  "HRsize ~ Mean C:P + Weight", #3
+  "HRsize ~ C:P CV + Weight", #4
+  "HRsize ~ Mean C:P + C:P CV", #5
+  "HRsize ~ Mean C:P * C:P CV", #6
+  "HRsize ~ Mean C:P + C:P CV + Weight", #7
+  "HRsize ~ Mean C:P * C:P CV + Weight", #8
+  "Intercept" #9
+  )
+
+vaanCP_aicctab <- aictab(mods.50, modnames = mods.names, second.ord = T, 
+                         sort = T)
+
+# Allocate and populate a list of adjusted R square values following the same 
+# order as the best of model created up off
+rsq <- list()
+for (i in 1:length(mods.50)) {
+  rsq[[i]] <- summary(mods.50[[i]])$r.squared
+}
+# add names to the adjusted R square values list
+names(rsq) <- mods.names
+rsqdf <- enframe(rsq, name = "Modnames", value = "Rsq") %>% 
+  unnest(cols = c("Modnames", "Rsq"))
+
+rsqdf$Modnames <- as_factor(rsqdf$Modnames)
+
+# save now complete AICc table to a new object
+vaanCPaicRsq <- vaanCP_aicctab %>% merge(., rsqdf) %>% arrange(., Delta_AICc) 
+
+gt(vaanCPaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
+  tab_header("Model Selection for Blueberry C:P") %>% 
+    cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", 
+             Delta_AICc = "Delta AICc", ModelLik ="Model Likelihood", 
+             AICcWt = "AICc Weight", LL ="Log-Lik", 
+             Cum.Wt = "Cumulative Weight", Rsq = "R sq.")
+```
+
+## Table summary of AICc top models
+
+Here we show the top-ranking models for each stoichiometric ratio-plant species 
+pair, after removing uninformative parameters (*sensu* @Leroux2019).
+
+```{r aicc-top-models, echo=TRUE, tidy=TRUE, warning=FALSE}
+top.mods <- list()
+# BLueberry C:N ratio top models
+top.mods[[1]] <- vaanCNaicRsq[1,]
+top.mods[[2]] <- vaanCNaicRsq[5,]
+top.mods[[3]] <- vaanCNaicRsq[8,]
+top.mods[[4]] <- vaanCNaicRsq[9,]
+
+# Blueberry N:P ratio top models
+top.mods[[5]] <- vaanNPaicRsq[1,]
+top.mods[[6]] <- vaanNPaicRsq[2,]
+
+# Blueberry C:P ratio top models
+top.mods[[7]] <- vaanCPaicRsq[1,]
+top.mods[[8]] <- vaanCPaicRsq[3,]
+
+# Red maple N:P ratio top models
+top.mods[[9]] <- acruNPaicRsq[1,]
+top.mods[[10]] <- acruNPaicRsq[5,]
+
+# Red maple C:N ratio top models
+top.mods[[11]] <- acruCNaicRsq[1,]
+top.mods[[12]] <- acruCNaicRsq[2,]
+top.mods[[13]] <- acruCNaicRsq[3,]
+
+top.mods %>% bind_rows() %>% 
+  gt() %>% 
+  fmt_number(columns = 3:9, decimals = 3) %>% 
+  tab_row_group(., group = "Blueberry C:N top models", rows = c(1:4)) %>% 
+  tab_row_group(., group = "Blueberry N:P top models", rows = c(5,6)) %>% 
+  tab_row_group(., group = "Bluberry C:P top models", rows = c(7,8)) %>% 
+  tab_row_group(., group = "Red maple N:P top models", rows = c(9,10)) %>% 
+  tab_row_group(., group = "Red maple C:N top models", rows = c(11:13)) %>% 
+  cols_hide(columns = vars(AICc, ModelLik, AICcWt, Cum.Wt)) %>% 
+  cols_label(Modnames = "Model", K = "K", Delta_AICc = html("&Delta;AICc"), 
+             LL ="LL", Rsq = html("R<sup>2</sup>")) 
+
+# %>% gtsave(filename = "../Results/ModSel_summaryTab.tex")
+```
+
+The table below includes a breakdown of the uninformative parameters we removed, 
+for each stoichiometric ratio-plant species pair. 
+
+Model group               Uninformative Parameters
+-------------------       --------------------------------
+Blueberry C:N ratio       Body Weight, Mean-CV interaction
+Blueberry N:P ratio       None
+BLueberry C:P ratio       Body Weight
+Red maple N:P ratio       Mean, Body Weight
+Red maple C:N ratio       None
+
+
+<!-- # References -->
+
+<!-- Outdated code -->
+
+<!-- ### Models with Median Stoich {.tabset .tabset-fade .tabset-pills} -->
+<!-- #### Red Maple C:N -->
+<!-- ```{r ACRU-CN-median-only, echo=TRUE, tidy=TRUE} -->
+<!-- # 1. Red Maple CN median -->
+<!-- acruCNmed <- lm(HRsize ~ ACRU_CN_median, data = hare.stoich.clean) -->
+
+<!-- # check model output -->
+<!-- #summary(acruCNmed) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r ACRU-CN-med-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(acruCNmed, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Blueberry C:N -->
+<!-- ```{r VAAN-CN-median-only, echo=TRUE, tidy=TRUE} -->
+<!-- vaanCNmed <- lm(HRsize ~ VAAN_CN_median, data = hare.stoich.clean) -->
+
+<!-- #summary(vaanCNmed) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-CN-med-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(vaanCNmed, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Red Maple N:P -->
+<!-- ```{r ACRU-NP-median-only, echo=TRUE, tidy=TRUE} -->
+<!-- acruNPmed <- lm(HRsize ~ ACRU_NP_median, data = hare.stoich.clean) -->
+
+<!-- #summary(acruNPmed) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r ACRU-NP-med-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(acruNPmed, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Blueberry N:P -->
+<!-- ```{r VAAN-NP-median-only, echo=TRUE, tidy=TRUE} -->
+<!-- vaanNPmed <- lm(HRsize ~ VAAN_NP_median, data = hare.stoich.clean) -->
+
+<!-- #summary(vaanNPmed) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-NP-med-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(vaanNPmed, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Blueberry C:P -->
+<!-- ```{r VAAN-CP-median-only, echo=TRUE, tidy=TRUE} -->
+<!-- vaanCPmed <- lm(HRsize ~ VAAN_CP_median, data = hare.stoich.clean) -->
+
+<!-- #summary(vaanCPmed) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-CP-med-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(vaanCPmed, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- ### Models with Stoich Standard Deviation {.tabset .tabset-fade .tabset-pills} -->
+
+<!-- #### Red Maple C:N -->
+<!-- ```{r ACRU-CN-sd-only, echo=TRUE, tidy=TRUE, warning=FALSE} -->
+<!-- acruCNsdhr <- lm(HRsize ~ ACRU_CN_sd, data = hare.stoich.clean) -->
+
+<!-- # check model output -->
+<!-- #summary(acruCNsdhr) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r ACRU-CN-sd-only-diag, echo=TRUE, tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(acruCNsdhr, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Blueberry C:N -->
+<!-- ```{r VAAN-CN-sd-only, echo=TRUE, tidy=TRUE} -->
+<!-- vaanCNsdhr <- lm(HRsize ~ VAAN_CN_sd, data = hare.stoich.clean) -->
+
+<!-- #summary(vaanCNsdhr) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-CN-sd-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(vaanCNsdhr, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Red Maple N:P -->
+<!-- ```{r ACRU-NP-sd-only, echo=TRUE, tidy=TRUE} -->
+<!-- acruNPsdhr <- lm(HRsize ~ ACRU_NP_sd, data = hare.stoich.clean) -->
+
+<!-- #summary(acruNPsdhr) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r ACRU-NP-sd-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(acruNPsdhr, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Blueberry N:P -->
+<!-- ```{r VAAN-NP-sd-only, echo=TRUE, tidy=TRUE} -->
+<!-- vaanNPsdhr <- lm(HRsize ~ VAAN_NP_sd, data = hare.stoich.clean) -->
+
+<!-- #summary(vaanNPsdhr) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-NP-sd-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(vaanNPsdhr, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Blueberry C:P -->
+<!-- ```{r VAAN-CP-sd-only, echo=TRUE, tidy=TRUE} -->
+<!-- vaanCPsdhr <- lm(HRsize ~ VAAN_CP_sd, data = hare.stoich.clean) -->
+
+<!-- #summary(vaanCPsdhr) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-CP-sd-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(vaanCPsdhr, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- ### Models with Median Stoich, Weight, Sampling Year{.tabset .tabset-fade .tabset-pills} -->
+
+<!-- #### Red Maple C:N -->
+<!-- ```{r ACRU-CN-multi-med,echo=TRUE,tidy=TRUE} -->
+<!-- # 1. Red Maple CN median -->
+<!-- acruCNmed.exp <- lm(HRsize ~ ACRU_CN_median + WeightSSH_g + SamplingYear, data = hare.stoich.clean) -->
+
+<!-- # check model output -->
+<!-- #summary(acruCNmed.exp) -->
+<!-- ``` -->
+<!-- *Diagnostic Plots* -->
+<!-- ```{r ACRU-CN-multi-med-diag,echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(acruCNmed.exp, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Blueberry C:N  -->
+<!-- ```{r VAAN-CN-multi-med,echo=TRUE,tidy=TRUE} -->
+<!-- # 2. Blueberry CN mean -->
+<!-- vaanCNmed.exp <- lm(HRsize ~ VAAN_CN_median + WeightSSH_g + SamplingYear, data = hare.stoich.clean) -->
+
+<!-- #summary(vaanCNmed.exp) -->
+<!-- ``` -->
+<!-- *Diagnostic Plots* -->
+<!-- ```{r VAAN-CN-multi-med-diag,echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(vaanCNmed.exp, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Red Maple N:P -->
+<!-- ```{r ACRU-NP-multi-med,echo=TRUE,tidy=TRUE} -->
+<!-- # 3. Red Maple NP mean -->
+<!-- acruNPmed.exp <- lm(HRsize ~ ACRU_NP_median + WeightSSH_g + SamplingYear, data = hare.stoich.clean) -->
+
+<!-- #summary(acruNPmed.exp) -->
+<!-- ``` -->
+<!-- *Diagnostic Plots* -->
+<!-- ```{r ACRU-NP-multi-med-diag,echo=TRUE,tidy=TRUE} -->
+<!-- gg_diagnose(acruNPmed.exp, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Blueberry N:P -->
+<!-- ```{r VAAN-NP-multi-med,echo=TRUE,tidy=TRUE} -->
+<!-- vaanNPmed.exp <- lm(HRsize ~ VAAN_NP_median + WeightSSH_g + SamplingYear, data = hare.stoich.clean) -->
+
+<!-- #summary(vaanNPmed.exp) -->
+<!-- ``` -->
+<!-- *Diagnostic Plots* -->
+<!-- ```{r VAAN-NP-multi-med-diag,echo=TRUE,tidy=TRUE} -->
+<!-- gg_diagnose(vaanNPmed.exp, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Blueberry C:P -->
+<!-- ```{r VAAN-CP-multi-med,echo=TRUE,tidy=TRUE} -->
+<!-- vaanCPmed.exp <- lm(HRsize ~ VAAN_CP_median + WeightSSH_g + SamplingYear, data = hare.stoich.clean) -->
+
+<!-- #summary(vaanCPmed.exp) -->
+<!-- ``` -->
+<!-- *Diagnostic Plots* -->
+<!-- ```{r VAAN-CP-multi-med-diag,echo=TRUE,tidy=TRUE} -->
+<!-- gg_diagnose(vaanCPmed.exp, theme = theme_classic()) -->
+<!-- ``` -->
+
+
+<!-- ### Models with Stoich SD, Weight, Sampling Year{.tabset .tabset-fade .tabset-pills} -->
+
+<!-- #### Red Maple C:N -->
+<!-- ```{r ACRU-CN-multi-sd,echo=TRUE,tidy=TRUE} -->
+<!-- # 1. Red Maple CN SD -->
+<!-- acruCNsd.exp <- lm(HRsize ~ ACRU_CN_sd + WeightSSH_g + SamplingYear, data = hare.stoich.clean) -->
+
+<!-- # check model output -->
+<!-- #summary(acruCNsd.exp) -->
+<!-- ``` -->
+<!-- *Diagnostic Plots* -->
+<!-- ```{r ACRU-CN-multi-sd-diag,echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(acruCNsd.exp, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Blueberry C:N  -->
+<!-- ```{r VAAN-CN-multi-sd,echo=TRUE,tidy=TRUE} -->
+<!-- # 2. Blueberry CN mean -->
+<!-- vaanCNsd.exp <- lm(HRsize ~ VAAN_CN_sd + WeightSSH_g + SamplingYear, data = hare.stoich.clean) -->
+
+<!-- #summary(vaanCNsd.exp) -->
+<!-- ``` -->
+<!-- *Diagnostic Plots* -->
+<!-- ```{r VAAN-CN-multi-sd-diag,echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(vaanCNsd.exp, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Red Maple N:P -->
+<!-- ```{r ACRU-NP-multi-sd,echo=TRUE,tidy=TRUE} -->
+<!-- # 3. Red Maple NP mean -->
+<!-- acruNPsd.exp <- lm(HRsize ~ ACRU_NP_sd + WeightSSH_g + SamplingYear, data = hare.stoich.clean) -->
+
+<!-- #summary(acruNPsd.exp) -->
+<!-- ``` -->
+<!-- *Diagnostic Plots* -->
+<!-- ```{r ACRU-NP-multi-sd-diag,echo=TRUE,tidy=TRUE} -->
+<!-- gg_diagnose(acruNPsd.exp, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Blueberry N:P -->
+<!-- ```{r VAAN-NP-multi-sd,echo=TRUE,tidy=TRUE} -->
+<!-- vaanNPsd.exp <- lm(HRsize ~ VAAN_NP_sd + WeightSSH_g + SamplingYear, data = hare.stoich.clean) -->
+
+<!-- #summary(vaanNPsd.exp) -->
+<!-- ``` -->
+<!-- *Diagnostic Plots* -->
+<!-- ```{r VAAN-NP-multi-sd-diag,echo=TRUE,tidy=TRUE} -->
+<!-- gg_diagnose(vaanNPsd.exp, theme = theme_classic()) -->
+<!-- ``` -->
+
+<!-- #### Blueberry C:P -->
+<!-- ```{r VAAN-CP-multi-sd,echo=TRUE,tidy=TRUE} -->
+<!-- vaanCPsd.exp <- lm(HRsize ~ VAAN_CP_sd + WeightSSH_g + SamplingYear, data = hare.stoich.clean) -->
+
+<!-- #summary(vaanCPsd.exp) -->
+<!-- ``` -->
+<!-- *Diagnostic Plots* -->
+<!-- ```{r VAAN-CP-multi-sd-diag,echo=TRUE,tidy=TRUE} -->
+<!-- gg_diagnose(vaanCPsd.exp, theme = theme_classic()) -->
+<!-- ``` -->
+
+
+
+<!-- # Linear Mixed Effects Models -->
+
+<!-- ## Models with Mean Stoich, Body Weight, Sex, and Sampling Year {.tabset .tabset-fade .tabset-pills} -->
+
+<!-- >**Note [`r as.Date("2019-11-12")`]**: swapping Age for Body Weight to see if the singularity issue gets resolved -->
+
+<!-- ### Red Maple C:N -->
+<!-- ```{r ACRU-CN-lme, echo=TRUE, tidy=TRUE} -->
+<!-- #Red Maple CN mean -->
+<!-- acruCNhr.mod <- lmer(HRsize ~ ACRU_CN_mean + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+<!-- # computes marginal (fixed-effect) and conditional (whole-model) R^2 -->
+<!-- r.squaredGLMM(acruCNhr.mod)  -->
+<!-- # check model output -->
+<!-- #summary(acruCNhr.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r ACRU-CN-lme-diag, echo=TRUE, tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- acruCNhr.mod.f <- fortify.merMod(acruCNhr.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(acruCNhr.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(acruCNhr.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(acruCNhr.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(acruCNhr.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(acruCNhr.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(acruCNhr.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Red Maple Average C:N",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ### Blueberry C:N -->
+<!-- ```{r VAAN-CN-lme, echo=TRUE, tidy=TRUE} -->
+<!-- # 2. Blueberry CN mean -->
+<!-- vaanCNhr.mod <- lmer(HRsize ~ VAAN_CN_mean + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(vaanCNhr.mod) # computes marginal (fixed-effect) and conditional (whole-model) R^2 -->
+<!-- #summary(vaanCNhr.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-CN-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- vaanCNhr.mod.f <- fortify.merMod(vaanCNhr.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(vaanCNhr.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(vaanCNhr.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(vaanCNhr.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(vaanCNhr.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(vaanCNhr.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(vaanCNhr.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Blueberry Average C:N",tag_levels = "a") -->
+<!-- ``` -->
+
+
+<!-- ### Red Maple N:P -->
+<!-- ```{r ACRU-NP-lme, echo=TRUE, tidy=TRUE} -->
+<!-- # 3. Red Maple NP mean -->
+<!-- acruNPhr.mod <- lmer(HRsize ~ ACRU_NP_mean + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(acruNPhr.mod)  -->
+
+<!-- #summary(acruNPhr.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r ACRU-NP-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- acruNPhr.mod.f <- fortify.merMod(acruNPhr.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(acruNPhr.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(acruNPhr.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(acruNPhr.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(acruNPhr.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(acruNPhr.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(acruNPhr.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Red Maple Average N:P",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ### Blueberry N:P -->
+<!-- ```{r VAAN-NP-lme, echo=TRUE, tidy=TRUE} -->
+<!-- # 4. Blueberry NP mean -->
+<!-- vaanNPhr.mod <- lmer(HRsize ~ VAAN_NP_mean + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(vaanNPhr.mod) # computes marginal (fixed-effect) and conditional (whole-model) R^2 -->
+<!-- #summary(vaanNPhr.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-NP-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- vaanNPhr.mod.f <- fortify.merMod(vaanNPhr.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(vaanNPhr.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(vaanNPhr.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(vaanNPhr.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(vaanNPhr.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(vaanNPhr.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(vaanNPhr.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Blueberry Average N:P",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ### Blueberry C:P -->
+<!-- ```{r VAAN-CP-lme, echo=TRUE, tidy=TRUE} -->
+<!-- # 5. Blueberry CP mean -->
+<!-- vaanCPhr.mod <- lmer(HRsize ~ VAAN_CP_mean + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(vaanCPhr.mod)  -->
+<!-- #summary(vaanCPhr.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-CP-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- vaanCPhr.mod.f <- fortify.merMod(vaanCPhr.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(vaanCPhr.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(vaanCPhr.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(vaanCPhr.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(vaanCPhr.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(vaanCPhr.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(vaanCPhr.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Blueberry Average C:P",tag_levels = "a") -->
+<!-- ``` -->
+
+
+<!-- ## Models with Median Stoich, Body Weight, Sex, and Sampling Year {.tabset .tabset-fade .tabset-pills} -->
+
+<!-- >**Note [`r as.Date("2019-12-11")`]**: swapping Age for Body Weight to see if -->
+<!-- the singularity issue gets resolved -->
+
+<!-- Here I run the same models as above, but using the median value of each  -->
+<!-- stoichiometric value as predictor, instead of the mean. As above, these -->
+<!-- models do not currently include any weighting of the stoichiometric values.  -->
+<!-- I am still looking into a suitable measure of variability around the median to -->
+<!-- use as weighting factor. A potential candidate is the Median Absolute Deviation, -->
+<!-- but I am still working to understand what exactly it measures.  -->
+
+<!-- ### Red Maple C:N -->
+<!-- ```{r ACRU-CN-med-lme, echo=TRUE, tidy=TRUE} -->
+<!-- acruCNhr.med <- lmer(HRsize ~ ACRU_CN_median + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+<!-- # computes marginal (fixed-effect) and conditional (whole-model) R^2 -->
+<!-- r.squaredGLMM(acruCNhr.med)  -->
+<!-- # check model output -->
+<!-- #summary(acruCNhr.med) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r ACRU-CN-med-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- acruCNhr.med.f <- fortify.merMod(acruCNhr.med) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(acruCNhr.med.f, aes(.fitted,.resid)) + geom_point(colour="black") + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(acruCNhr.med.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(acruCNhr.med.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(acruCNhr.med.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(acruCNhr.med), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(acruCNhr.med, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Red Maple Median C:N",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ### Blueberry C:N -->
+<!-- ```{r VAAN-CN-med-lme, echo=TRUE, tidy=TRUE} -->
+<!-- vaanCNhr.med <- lmer(HRsize ~ VAAN_CN_median + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(vaanCNhr.med) # computes marginal (fixed-effect) and conditional (whole-model) R^2 -->
+<!-- #summary(vaanCNhr.med) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-CN-med-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- vaanCNhr.med.f <- fortify.merMod(vaanCNhr.med) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(vaanCNhr.med.f, aes(.fitted,.resid)) + geom_point(colour="black") + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(vaanCNhr.med.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(vaanCNhr.med.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(vaanCNhr.med.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(vaanCNhr.med), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(vaanCNhr.med, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Blueberry Median C:N",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ### Red Maple N:P -->
+<!-- ```{r ACRU-NP-med-lme, echo=TRUE, tidy=TRUE} -->
+<!-- acruNPhr.med <- lmer(HRsize ~ ACRU_NP_median + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(acruNPhr.med)  -->
+
+<!-- #summary(acruNPhr.med) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r ACRU-NP-med-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- acruNPhr.med.f <- fortify.merMod(acruNPhr.med) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(acruNPhr.med.f, aes(.fitted,.resid)) + geom_point(colour="black") + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(acruNPhr.med.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(acruNPhr.med.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(acruNPhr.med.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(acruNPhr.med), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(acruNPhr.med, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Red Maple Median N:P",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ### Blueberry N:P -->
+<!-- ```{r VAAN-NP-med-lme, echo=TRUE, tidy=TRUE} -->
+<!-- vaanNPhr.med <- lmer(HRsize ~ VAAN_NP_median + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(vaanNPhr.med)  -->
+<!-- #summary(vaanNPhr.med) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-NP-med-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- vaanNPhr.med.f <- fortify.merMod(vaanNPhr.med) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(vaanNPhr.med.f, aes(.fitted,.resid)) + geom_point(colour="black") + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(vaanNPhr.med.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(vaanNPhr.med.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(vaanNPhr.med.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(vaanNPhr.med), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(vaanNPhr.med, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Blueberry Median N:P",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ### Blueberry C:P -->
+<!-- ```{r VAAN-CP-med-lme, echo=TRUE, tidy=TRUE} -->
+<!-- vaanCPhr.med <- lmer(HRsize ~ VAAN_CP_median + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(vaanCPhr.med)  -->
+<!-- #summary(vaanCPhr.med) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-CP-med-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- vaanCPhr.med.f <- fortify.merMod(vaanCPhr.med) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(vaanCPhr.med.f, aes(.fitted,.resid)) + geom_point(colour="black") + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(vaanCPhr.med.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(vaanCPhr.med.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(vaanCPhr.med.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(vaanCPhr.med), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(vaanCPhr.med, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Blueberry Median C:P",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ## Models with Stoich SD, Body Weight, Sex, and Sampling Year {.tabset .tabset-fade .tabset-pills} -->
+
+<!-- ### Red Maple C:N -->
+<!-- ```{r ACRU-CN-sd-lme, echo=TRUE, tidy=TRUE} -->
+<!-- acruCNsd.mod <- lmer(HRsize ~ ACRU_CN_sd + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+<!-- # computes marginal (fixed-effect) and conditional (whole-model) R^2 -->
+<!-- r.squaredGLMM(acruCNsd.mod)  -->
+<!-- # check model output -->
+<!-- #summary(acruCNsd.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r ACRU-CN-sd-lme-diag, echo=TRUE, tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- acruCNsd.mod.f <- fortify.merMod(acruCNsd.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(acruCNsd.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(acruCNsd.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(acruCNsd.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(acruCNsd.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(acruCNsd.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(acruCNsd.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Red Maple C:N Standard Deviation",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ### Blueberry C:N -->
+<!-- ```{r VAAN-CN-sd-lme, echo=TRUE, tidy=TRUE} -->
+<!-- vaanCNsd.mod <- lmer(HRsize ~ VAAN_CN_sd + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(vaanCNsd.mod) -->
+<!-- #summary(vaanCNsd.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-CN-sd-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- vaanCNsd.mod.f <- fortify.merMod(vaanCNsd.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(vaanCNsd.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(vaanCNsd.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(vaanCNsd.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(vaanCNsd.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(vaanCNsd.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(vaanCNsd.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Blueberry C:N Standard Deviation",tag_levels = "a") -->
+<!-- ``` -->
+
+
+<!-- ### Red Maple N:P -->
+<!-- ```{r ACRU-NP-sd-lme, echo=TRUE, tidy=TRUE} -->
+<!-- acruNPsd.mod <- lmer(HRsize ~ ACRU_NP_sd + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(acruNPsd.mod)  -->
+
+<!-- #summary(acruNPsd.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r ACRU-NP-sd-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- acruNPsd.mod.f <- fortify.merMod(acruNPsd.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(acruNPsd.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(acruNPsd.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(acruNPsd.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(acruNPsd.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(acruNPsd.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(acruNPsd.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Red Maple N:P Standard Deviation",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ### Blueberry N:P -->
+<!-- ```{r VAAN-NP-sd-lme, echo=TRUE, tidy=TRUE} -->
+<!-- vaanNPsd.mod <- lmer(HRsize ~ VAAN_NP_sd + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(vaanNPsd.mod) -->
+<!-- #summary(vaanNPsd.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-NP-sd-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- vaanNPsd.mod.f <- fortify.merMod(vaanNPsd.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(vaanNPsd.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(vaanNPsd.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(vaanNPsd.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(vaanNPsd.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(vaanNPsd.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(vaanNPsd.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Blueberry N:P Standard Deviation",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ### Blueberry C:P -->
+<!-- ```{r VAAN-CP-sd-lme, echo=TRUE, tidy=TRUE} -->
+<!-- vaanCPsd.mod <- lmer(HRsize ~ VAAN_CP_sd + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(vaanCPsd.mod)  -->
+<!-- #summary(vaanCPsd.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-CP-sd-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- vaanCPsd.mod.f <- fortify.merMod(vaanCPsd.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(vaanCPsd.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(vaanCPsd.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(vaanCPsd.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(vaanCPsd.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(vaanCPsd.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(vaanCPsd.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Blueberry C:P Standard Deviation",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ## Models with Stoich Coefficient of Variation, Body Weight, Sex, and Sampling Year {.tabset .tabset-fade .tabset-pills} -->
+
+<!-- ### Red Maple C:N -->
+<!-- ```{r ACRU-CN-cv-lme, echo=TRUE, tidy=TRUE} -->
+<!-- acruCNcv.mod <- lmer(HRsize ~ ACRU_CN_CVar + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+<!-- # computes marginal (fixed-effect) and conditional (whole-model) R^2 -->
+<!-- r.squaredGLMM(acruCNcv.mod)  -->
+<!-- # check model output -->
+<!-- #summary(acruCNcv.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r ACRU-CN-cv-lme-diag, echo=TRUE, tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- acruCNcv.mod.f <- fortify.merMod(acruCNcv.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(acruCNcv.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(acruCNcv.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(acruCNcv.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(acruCNcv.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(acruCNcv.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(acruCNcv.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Red Maple C:N Coefficient of Variation",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ### Blueberry C:N -->
+<!-- ```{r VAAN-CN-cv-lme, echo=TRUE, tidy=TRUE} -->
+<!-- vaanCNcv.mod <- lmer(HRsize ~ VAAN_CN_CVar + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(vaanCNcv.mod) -->
+<!-- #summary(vaanCNcv.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-CN-cv-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- vaanCNcv.mod.f <- fortify.merMod(vaanCNcv.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(vaanCNcv.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(vaanCNcv.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(vaanCNcv.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(vaanCNcv.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(vaanCNcv.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(vaanCNcv.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Blueberry C:N Coefficient of Variation",tag_levels = "a") -->
+<!-- ``` -->
+
+
+<!-- ### Red Maple N:P -->
+<!-- ```{r ACRU-NP-cv-lme, echo=TRUE, tidy=TRUE} -->
+<!-- acruNPcv.mod <- lmer(HRsize ~ ACRU_NP_CVar + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(acruNPcv.mod)  -->
+
+<!-- #summary(acruNPcv.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r ACRU-NP-cv-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- acruNPcv.mod.f <- fortify.merMod(acruNPcv.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(acruNPcv.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(acruNPcv.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(acruNPcv.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(acruNPcv.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(acruNPcv.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(acruNPcv.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Red Maple N:P Coefficient of Variation",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ### Blueberry N:P -->
+<!-- ```{r VAAN-NP-cv-lme, echo=TRUE, tidy=TRUE} -->
+<!-- vaanNPcv.mod <- lmer(HRsize ~ VAAN_NP_CVar + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(vaanNPcv.mod) -->
+<!-- #summary(vaanNPcv.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-NP-cv-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- vaanNPcv.mod.f <- fortify.merMod(vaanNPcv.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(vaanNPcv.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(vaanNPcv.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(vaanNPcv.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(vaanNPcv.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(vaanNPcv.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(vaanNPcv.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Blueberry N:P Coefficient of Variation",tag_levels = "a") -->
+<!-- ``` -->
+
+<!-- ### Blueberry C:P -->
+<!-- ```{r VAAN-CP-cv-lme, echo=TRUE, tidy=TRUE} -->
+<!-- vaanCPcv.mod <- lmer(HRsize ~ VAAN_CP_CVar + WeightSSH_g + Sex + (1|SamplingYear), data = hare.stoich.clean) -->
+
+<!-- r.squaredGLMM(vaanCPcv.mod)  -->
+<!-- #summary(vaanCPcv.mod) -->
+<!-- ``` -->
+
+<!-- *Diagnostic plots* -->
+<!-- ```{r VAAN-CP-cv-lme-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots (cfr: https://bbolker.github.io/morelia_2018/notes/mixedlab.html) -->
+<!-- vaanCPcv.mod.f <- fortify.merMod(vaanCPcv.mod) -->
+
+<!-- # residuals vs. fitted plot -->
+<!-- resfit <- ggplot(vaanCPcv.mod.f, aes(.fitted,.resid)) + geom_point() + geom_hline(yintercept=0) + xlab("Fitted") + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Age -->
+<!-- weightbp <- ggplot(vaanCPcv.mod.f, aes(WeightSSH_g,.resid)) + geom_point() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by Sex -->
+<!-- sexbp <- ggplot(vaanCPcv.mod.f, aes(Sex,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + theme_classic() -->
+
+<!-- # residuals grouped by year of trapping -->
+<!-- yeartrpbp <- ggplot(vaanCPcv.mod.f, aes(SamplingYear,.resid)) + geom_boxplot() + coord_flip() + ylab("Residuals") + xlab("Sampling Year") + theme_classic() -->
+
+<!-- # Q-Q plot -->
+<!-- qqpl <- ggplot(augment(vaanCPcv.mod), -->
+<!--                aes(sample = .resid/sd(.resid))) +  ## scale to variance=1 -->
+<!--   stat_qq(aes(group = 1)) + -->
+<!--   geom_abline(intercept=0,slope=1) + -->
+<!--   theme_classic() -->
+
+<!-- # random effects plot -->
+<!-- ranefp <- ggplot(tidy(vaanCPcv.mod, effects = "ran_vals"), aes(level, estimate)) + -->
+<!--   geom_pointrange(aes(ymin = estimate-1.96*std.error, -->
+<!--                       ymax = estimate+1.96*std.error)) + -->
+<!--   xlab("Sampling Year") + -->
+<!--   coord_flip() +  -->
+<!--   theme_classic() -->
+
+<!-- resfit + weightbp + sexbp + yeartrpbp + qqpl + ranefp + plot_annotation(title = "Diagnostic Plots", subtitle = "Blueberry C:P Coefficient of Variation",tag_levels = "a") -->
+<!-- ``` -->

@@ -1,0 +1,814 @@
+---
+title: "Snowshoe hare home range size estimation"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+author: "Matteo Rizzuto"
+output:
+  rmdformats::html_clean:
+    self_contained: false
+    thumbnails: true
+    lightbox: true
+    gallery: true
+    highlight: tango
+    code_folding: hide
+    fig_width: 8
+    fig_height: 6
+    df_print: paged
+  pdf_document:
+    citation_package: biblatex
+    dev: pdf
+    fig_caption: true
+    fig_crop: TRUE
+    highlight: tango
+    keep_tex: true
+    latex_engine: pdflatex
+    toc: true
+    toc_depth: 2
+    number_sections: false
+    df_print: kable    
+fontsize: 11pt
+geometry: margin=1in
+documentclass: article    
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/ecology.csl
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r eval=FALSE, include=FALSE, tidy=TRUE}
+knitr::knit('StoichiometryOfHomeRanges.Rmd', tangle=TRUE)
+source('StoichiometryOfHomeRanges.R')
+
+knitr::knit('razimuthTriangulation.Rmd', tangle=TRUE)
+source('razimuthTriangulation.R')
+```
+
+Here we estimate home range size of our snowshoe hares using the autocorrelated
+Kernel Density Estimator (henceforth, aKDE) developed by @Fleming2017. The code 
+below was edited and adapted to our case study by Isabella C. Richmond and Matteo
+Rizzuto, from code developed by Amanda Droghini [@Droghini2020]. 
+
+## Data Preparation
+
+First, let's load our dataset of triangulated locations that includes error
+ellipses. Then, because `ctmm` accepts data in the format used on the online 
+repository for animal movement data MoveBank, we need to reformat the `razimuth` 
+generated to the MoveBank format. Following the directions in the 
+`as.telemetry()` function documentation, we will only include necessary MoveBank 
+columns. This involves the following name changes to the variable in the dataset:
+
+* **date** -> *timestap*, containing information on the date and time of observation
+* **long** -> *location.long*, containing the longitude of the estimated collar location
+* **lat** -> *location.lat*, containing the latitude of the estimated collar location
+* **COVt.x.y** -> *COV.x.y*, containing the information on each location's error ellipse
+* **id.x** -> *tag.local.identifier*, containing the collar frequency
+* **id.y** -> *individual.local.identifier*, containing the collar frequency
+
+After this renaming, we will convert the `hares.locs` object to a `telemetry`
+object using function `as.telemetry()` and set its spatial projection to WGS 84 
+for UTM zone 22 (EPSG 32622). 
+
+```{r movebank-data-load, echo=TRUE,tidy=TRUE}
+# load the data formatted as per MoveBank requirements
+hares.locs <- hares.triangd %>% dplyr::rename(., timestamp = date, location.long = long, location.lat = lat, tag.local.identifier = id.x, individual.local.identifier = indiv, COV.x.y = COVt.x.y) %>% dplyr::select(., -c(id.y, pid.x, pid.y, obs_id, cpid))
+
+head(hares.locs)
+# convert to a list of telemetry objects
+# projection is WGS 84 for UTM zone 22
+hares.telem <- as.telemetry(hares.locs, keep = TRUE,projection="+init=epsg:32622")
+head(hares.telem)
+```
+
+Now that the dataset is in the correct format, we can use plotting methods 
+inherited from `ctmm` to visualize the error ellipses around our points. The 
+left plot below does this, whereas the one on the right shows only the location data.
+
+```{r error-ellipses-vis, echo=TRUE, tidy=TRUE}
+# setup side-by-side plots
+par(mfrow=c(1,2))
+
+# plot error ellipses
+plot(hares.telem, error = 1, col=rainbow(length(hares.telem)), 
+     main = "Error Ellipses")
+
+# for comparison, plot the individual points
+plot(hares.telem, error = 0, col=rainbow(length(hares.telem)), 
+     main = "Location Data")
+```
+
+## Removing Outlying Locations
+
+We are going to investigate outliers using the function `outlie` in package
+`ctmm`. In the following plots, a blue line indicates a speed outlier, i.e. an 
+interval in which the animal moved faster than expected or usual, and a red dot 
+indicates a distance outlier, i.e. a location too far from the rest of that
+individual's locations cloud. 
+```{r outliers-iding, echo=TRUE, tidy=TRUE}
+# use ctmm::outlie to investigate outliers 
+# blue indicates speed outlier and red indicates distance
+ids <- names(hares.telem)
+for (i in 1:length(ids)){
+  ctmm::outlie(hares.telem[[i]], plot=TRUE, main=ids[i])
+  # If need to save individual plots, uncomment lines below
+  
+  # plotName <- paste("outliers",ids[i],sep="")
+  # filePath <- paste("../Results/Outliers/",plotName,sep="")
+  # finalName <- paste(filePath,"png",sep=".")
+  # dev.copy(png,finalName)
+  # dev.off()
+  # rm(plotName,filePath,finalName)
+}
+```
+
+Now for the removal. It looks like, in general, high speeds relate to far distances. 
+For the purposes of our study, given that each triangulation attempt was separated
+by a minimum of 15 hours and usually more than that, we are not really worried 
+about speed outliers. In the following code chunk, we will investigate
+outliers using a custom generated function, `plotOutliers`, and the output of
+`outlie`. `plotOutliers` was developed by @Droghini2020 and it produces a quick 
+plot to visualize outliers.
+
+```{r individual-outliers-check, echo=TRUE, tidy=TRUE}
+# looks like generally high speeds are related to far distances
+# less worried about speed because there is a minimum of 15 hours
+# between relocs (usually more than that)
+# going to look into outliers for each individual 
+# using plotOutlier and looking at ctmm::outlie output simultaneously
+source("function-plotOutliers.R")
+# 149.003
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.003")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any
+# 149.053
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.053")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # removing 1 point past 48.348 and 1 pont past 48.352
+# 149.093
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.093")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any
+# 149.124
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.124")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 149.173
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.173")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # removing 2 points past -53.980
+# 149.213
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.213")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # removing 2 points past -53.9930
+# 149.233
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.233")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 149.274
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.274")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 149.294
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.294")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # removing 1 point past -53.9800
+# 149.394
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.394")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # removing 1 point past 48.354
+# 149.423
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.423")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # removing 1 point past 48.354
+# 149.452
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.452")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 149.513
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.513")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # removing 1 point below 48.350
+# 149.535
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.535")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # removing 1 point past -53.986
+# 149.594
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.594")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 149.613
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.613")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # removing 1 point past -53.9750
+# 149.633
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.633")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 149.653
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.653")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 149.673
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.673")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any
+# 150.032
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.032")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 150.052
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.052")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # removing 1 point past -53.9900 and 1 past 48.349
+# 150.072
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.072")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # removing 1 point past 48.350
+# 150.091
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.091")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 150.111
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.111")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any
+# 150.132
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.132")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 150.154
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.154")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any
+# 150.173
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.173")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 150.191
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.191")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 150.232
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.232")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any
+# 150.273
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.273")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 150.314
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.314")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # removing 1 point past -53.9775
+# 150.332
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.332")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 150.373
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.373")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any 
+# 150.392
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.392")
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any
+```
+
+In looking at these plots, we are interested in those points that are far out
+from the rest of the "cloud", that it, those points that stretch the black 
+connecting line far out. Based on the above plots, here is a breakdown of the 
+points we will remove:
+
+Collar Frequency  Long. outliers  Cutoff Longitude  Lat. outliers  Cutoff Latitude
+----------------  --------------  ----------------  -------------  ---------------
+149.053                                             2              > 48.348, 48.352        
+149.174           2               > -53.980
+149.213           2               > -53.993
+149.294           1               > -53.980
+149.394                                             1              > 48.354
+149.423                                             1              > 48.354
+149.513                                             1              < 48.350
+149.535           1               > -53.986                           
+149.613           1               > -53.975
+150.052           1               > -53.990         1              > 48.349
+150.072                                             1              > 48.350
+150.314           1               > -53.9775
+
+
+First, let's temporarily remove them and check visually how the new maps would 
+look like without them.
+
+```{r individual-outliers-test-removal, echo=TRUE, tidy=TRUE}
+# 149.053
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.053") %>% dplyr::filter(., location.lat > (48.348)) %>% dplyr::filter(., location.lat < (48.352)) # removing 1 points past 48.348 and 1 point past 48.352
+plotOutliers(subsetOutlier,1,nrow(subsetOutlier)) # looks better
+# 149.173
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.173") %>% dplyr::filter(., location.long > (-53.980)) # removing 2 points past -53.980
+plotOutliers(subsetOutlier,1,nrow(subsetOutlier)) # looks better
+# 149.213
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.213") %>% dplyr::filter(., location.long > (-53.9930)) # removing 2 points past -53.9930
+plotOutliers(subsetOutlier,1,nrow(subsetOutlier)) # looks better
+# 149.294
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.294") %>% dplyr::filter(., location.long < (-53.9800)) # removing 1 point past -53.9800
+plotOutliers(subsetOutlier,1,nrow(subsetOutlier)) # looks better
+# 149.394
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.394") %>% dplyr::filter(., location.lat < (48.354))# removing 1 point past 48.354
+plotOutliers(subsetOutlier,1,nrow(subsetOutlier)) # looks better
+# 149.423
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.423") %>% dplyr::filter(., location.lat < (48.354)) # removing 1 point past 48.354
+plotOutliers(subsetOutlier,1,nrow(subsetOutlier)) # looks better
+# 149.513
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.513") %>% dplyr::filter(., location.lat > (48.350)) # removing 1 point below 48.350
+plotOutliers(subsetOutlier,1,nrow(subsetOutlier)) # looks better
+# 149.535
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.535") %>% dplyr::filter(., location.long > (-53.986)) # removing 1 point past -53.986
+plotOutliers(subsetOutlier,1,nrow(subsetOutlier)) # looks better
+# 149.613
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.613") %>% dplyr::filter(., location.long < (-53.9775)) # removing 1 point past -53.9750
+plotOutliers(subsetOutlier,1,nrow(subsetOutlier)) # looks better
+# 150.052
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.052") %>% dplyr::filter(., location.long > (-53.9900) & location.lat > (48.349)) # removing 1 point past -53.9900 and 1 past 48.349
+plotOutliers(subsetOutlier,1,nrow(subsetOutlier)) # looks better
+# 150.072
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.072") %>% dplyr::filter(., location.lat > (48.350)) # removing 1 point past 48.350
+plotOutliers(subsetOutlier,1,nrow(subsetOutlier)) # looks better
+# 150.314
+subsetOutlier <- subset(hares.locs, tag.local.identifier == "150.314") %>% dplyr::filter(., location.long < (-53.9775)) # removing 1 point past -53.9775
+plotOutliers(subsetOutlier,1,nrow(subsetOutlier)) # looks better
+```
+
+The maps look better than the first time around, so let's go ahead and remove
+these points from the dataset and create a new object to store the outlier-free
+dataset, `hares.Clean`.
+
+```{r outliers-removal, echo=TRUE, tidy=TRUE, results="hide"}
+# create a dataset without outliers to run through the analysis 
+hares.Clean <- hares.locs %>%
+  dplyr::filter(!(tag.local.identifier=="149.053" & location.lat > (48.352) | 
+                    tag.local.identifier== "149.053" & location.lat < (48.348) |
+                    tag.local.identifier=="149.173" & location.long < (-53.980) |
+                    tag.local.identifier=="149.213" & location.long < (-53.9930) |
+                    tag.local.identifier=="149.294" & location.long > (-53.9800) |
+                    tag.local.identifier=="149.394" & location.lat > (48.354) |
+                    tag.local.identifier=="149.423" & location.lat > (48.354) |
+                    tag.local.identifier=="149.513" & location.lat < (48.350) |
+                    tag.local.identifier=="149.535" & location.long < (-53.986) |
+                    tag.local.identifier=="149.613" & location.long > (-53.9775) |
+                    tag.local.identifier=="150.052" & (location.long < (-53.9900) | location.lat < (48.349)) |
+                    tag.local.identifier=="150.072" & location.lat < (48.350) |
+                    tag.local.identifier=="150.314" & location.long > (-53.9775)
+  ))
+# 18 total outliers removed 
+# save this as the cleaned version 
+write.csv(hares.Clean, "../Results/haresLocsClean.csv")
+
+# convert to telemetry object to use going forward
+hares.telem.clean <- as.telemetry(hares.Clean, keep = TRUE, projection="+init=epsg:32622")
+```
+
+## Variograms
+
+Now that we have removed outlying locations, we are going to investigate space
+use patterns looking at variograms of our data. To do this, we use a custom 
+function, `plotVariograms`. We are going to look only at the zoomed out variograms,
+i.e. the ones that show the long-term behaviour of our animals, as we conducted
+only one triangulation attempt per day per collar. The `plotVariograms` function
+was developed by @Droghini2020. Each variogram is saved as a `.png` image in 
+`../Results/Variograms/Data`.
+
+```{r variograms-check, echo=TRUE, tidy=TRUE}
+# looking at the variograms to explore space use patterns
+# load varioPlot function from function-plotVariograms.R 
+# zoom is false because there is only one measurement taken per day (max)
+source("function-plotVariograms.R")
+varioPlot(hares.telem.clean, filePath="../Results/Variograms/Data", zoom = FALSE)
+# variograms look ok - could be better
+```
+
+The variograms look good, although some could be better. In these plots, we are
+looking for a flattening-out of cloud of data, as that is indicative of home range
+behaviour. Overall, our hares appear to show home range behaviour, as the semi-variance
+remains fairly flat throughout the time interval of telemetry sampling.
+
+Now that we have a dataset containing error-informed location estimates for our 
+snowshoe hares, removed outlying points, and checked for home ranging behaviour,
+it is time to move on to estimating model parameters and then fit the aKDE model
+to estimate the Utilization Distribution of our hares.
+
+## Selection of Model Parameters
+
+We will estimate our model's parameters while including the error ellipses 
+around our location data estimated through `razimuth` [@Gerber2018]. Including
+a measurement of error around an estimated location, ellipses in this case, is 
+important particularly for species that are not very mobile, like snowshoe hares. 
+Of course, no method is perfect. `razimuth` estimates irregular-shape ellipses, 
+whereas package `sigloc`, an older and no-longer maintained triangulation package,
+estimates Gaussian-distributed ellipses which would have been more appropriate in
+our case study. However, `sigloc` does not estimate error correctly due to the 
+simplifying assumption underlying its Maximum Likelihood Estimator algorithm 
+powering the triangulation process [@Gerber2018], which is why we selected `razimuth`.
+
+Overall, the error ellipses generated through `razimuth` were approximately 
+circular-elliptical, which makes us confident that the variance associated with 
+our measure of error around each location is not huge. 
+
+As a first step, we are going to loop through our individual hares and have `ctmm`
+guess the parameters for each one.
+
+```{r ctmm-parameter-guess, echo=TRUE, tidy=TRUE}
+hares.guess.initial.e <- lapply(hares.telem.clean[1:length(hares.telem.clean)], 
+                                function(b) ctmm.guess(b,CTMM=ctmm(error=TRUE),
+                                                       interactive=FALSE) )
+```
+
+Armed with these guessed parameters, we are going to fit and select a 
+continuous-time movement model (ctmm) to each of our snowshoe hares. We are 
+going to fit the ctmm using the perturbative hybrid residual maximum likelihood
+(`pHREML`) method, as it was designed specifically to deal with small sample 
+sizes like ours [@Fleming2019]. 
+
+> **Note**: the code chunk below can take a while to run. On a machine with a
+Quad-Core Intel Core i7 2.5 GHz with 16 Gb RAM, it took about 30 minutes.
+
+```{r ctmm-fit, echo=TRUE, tidy=TRUE}
+tictoc::tic() # start timing 
+hares.fit.e <- lapply(1:length(hares.telem.clean), 
+                      function(i) ctmm.select(data=hares.telem.clean[[i]],
+                                              CTMM=hares.guess.initial.e[[i]],
+                                              verbose=TRUE,trace=TRUE, cores=0,
+                                              method = "pHREML") )
+tictoc::toc() # return total run time
+```
+
+As this is, again a fairly large output, we are going to save it into a `.rds`
+file for ease of access in later analyses. 
+
+```{r ctmm-fit-save, echo=TRUE, tidy=TRUE}
+saveRDS(hares.fit.e, "../Results/haresfitraz.rds")
+hares.fit.e <- readRDS("../Results/haresfitraz.rds")
+```
+
+### Saving the model selection parameters
+
+The object `hares.fit.e` does not contain information on individual identities, 
+so we are going to add the collar frequency to it. We are then going to place the
+model selection parameters in a dataframe. We will then add the model names
+to this dataframe, separate out only the top-ranked models into a dedicated 
+dataframe (`topModels.e`), and save the final objects. 
+
+```{r ctmm-add-names,echo=TRUE,tidy=TRUE}
+# Add seasonal animal ID names to fitModels list
+names(hares.fit.e) <- names(hares.telem)
+# The warning "pREML failure: indefinite ML Hessian" is normal if some autocorrelation parameters cannot be well resolved.
+
+# Place model selection parameters for all individuals in dataframe
+hares.models.summary.e <- lapply(hares.fit.e,function(x) summary(x))
+hares.models.summary.e <- plyr::ldply(hares.models.summary.e, rbind)
+
+# Place model name in df
+modelRows.e <- lapply(hares.fit.e,function(x) row.names(summary(x)))
+modelRows.e <- plyr::ldply(modelRows.e, rbind)
+modelRows.e <- modelRows.e %>% 
+  pivot_longer(cols = -.id,
+               values_to="model",names_to="rank",
+               values_drop_na = TRUE)
+# join the two dataframes, model summaries and model names, into one
+modelSummary.e <- cbind(modelRows.e,hares.models.summary.e)
+
+# Delete duplicate id column. Join doesn't work because .id is not a unique key
+modelSummary.e <- modelSummary.e[,-4]
+names(modelSummary.e) <- enc2utf8(names(modelSummary.e))
+
+# Subset only the highest ranked models
+topModels.e <- distinct(modelSummary.e,.id, .keep_all=TRUE) 
+topModels.e
+
+# save both the overall model summary dataframe and the top models one
+write_csv(modelSummary.e,"../Results/haresmodelsummary.e.csv")
+write_csv(topModels.e,"../Results/harestopmodels.e.csv")
+# DOF is large enough (over 4-5) for all individuals 
+
+# save final telemetry and fit objects
+saveRDS(hares.telem.clean, "../Results/harestelemclean_final.rds")
+saveRDS(hares.fit.e, "../Results/haresfite_final.rds")
+```
+
+## Reasses the Variograms
+
+To check how good of a job our models do at fitting the data, we are going to
+plot the models' fits to the variograms of our telemetry data. Different colours
+represent different models fit to the data. In this case, we are going to save
+each variogram as `.png` image in `../Results/Variograms/Models`.
+
+```{r ctmm-variograms-fit, echo=TRUE, tidy=TRUE}
+# plot variograms with model fit
+filePath <- paste("../Results/Variograms/Models")
+
+lapply(1:length(hares.telem.clean), 
+       function (a) {
+         plotName <- paste(names(hares.fit.e[a]),sep="_")
+         plotPath <- paste(filePath,plotName,sep="")
+         finalName <- paste(plotPath,"png",sep=".")
+         
+         plot(ctmm::variogram(hares.telem.clean[[a]],CI="Gauss"),
+              CTMM=hares.fit.e[[a]][1:2],
+              col.CTMM=c("red","blue","purple","green"),
+              fraction=1,
+              level=c(0.5,0.95),
+              main=names(hares.fit.e[a]))
+         
+         dev.copy(png,finalName)
+         dev.off()
+         
+       }
+)
+```
+
+Overall, it appears that the model fits our data fairly well. Let's proceed to 
+select the parameters for our final home range models. 
+
+## Select the final model parameters
+
+Now that we have an idea of how good the models fit our data, it is time to 
+select the best models overall, and then proceed to use the aKDE to produce an 
+Utilization Distribution for each hare. The next code chunk selects the top 
+models and saves the output in an `.rds` file for ease of access. 
+
+```{r ctmm-params-save, echo=TRUE, tidy=TRUE}
+# Select only top models from all possible models
+finalNames <- names(hares.fit.e)
+finalMods <- lapply(1:length(hares.fit.e), 
+                    function(i) hares.fit.e[[i]][1][[1]]) 
+names(finalMods) <- finalNames
+# save final models 
+saveRDS(finalMods, "../Results/finalmodelse.rds")
+```
+
+## Producing the aKDE
+
+Estimating the Utilization Distribution with the aKDE method can take up a lot
+of space in your Environment. If necessary, run the following code chunk to
+clean up the environment and free space to accommodate the aKDEs.
+
+```{r free-space-option, eval=FALSE, tidy=TRUE, }
+# clean entire environment, need space for aKDE
+# remove(list=ls())
+```
+
+First of all, we are going to extract the extent for each telemetry set, and
+store it in a dedicated object `ee`.
+
+```{r akde-extent, echo=TRUE, tidy=TRUE}
+# get extent for each telemetry set
+ee <- lapply(hares.telem.clean,function(x) extent(x))
+ee <- data.frame(matrix(unlist(ee), 
+                        nrow=length(ee), 
+                        byrow=T))
+colnames(ee) <- c("min.x","max.x","min.y","max.y")
+
+```
+
+Then, we are going to take the extent's absolute minimum and maximum values and
+build a matrix out of them with some padding around these values to prevent 
+the home ranges to get cut off.
+
+```{r akde-extent-padding, echo=TRUE, tidy=TRUE}
+# find absolute minimum and maximum
+# pad it to prevent home ranges from getting cut off
+eeMatrix <- c(min(ee$min.x)-1000,max(ee$max.x)+1000,min(ee$min.y)-1000,max(ee$min.y)+1000)
+eeMatrix<-matrix(data=eeMatrix,nrow=2,ncol=2,dimnames=list(c("min","max")))
+colnames(eeMatrix)<-c("x","y")
+ee <- as.data.frame(eeMatrix)
+```
+
+Thin, we will calibrate the order both the dataframe containing our clean
+telemetry locations and our top-ranked models by the individuals' IDs, i.e. the
+collar frequency.
+
+```{r akde-id-assign, echo=TRUE, tidy=TRUE}
+# order calibratedData and finalMods alphabetically by IDs
+ids <- names(finalMods)
+ids <- ids[order(ids)]
+
+hares.telem.clean <- hares.telem.clean[ids]
+finalMods <- finalMods[ids]
+```
+
+Now, let's calculate the home ranges. We are going to set the argument 
+`debias=TRUE`, to remove the bias in the utilization distribution to be able to 
+estimate the area of the home range. This step of the estimation uses the AKDEc 
+method [@Fleming2019].
+
+```{r akde-estimation, echo=TRUE, tidy=TRUE}
+# calculate home ranges
+# debias = TRUE debiases the distribution for area estimation (AKDEc, Fleming et al., 2019)
+homeRanges <- akde(data=hares.telem.clean, debias=TRUE, CTMM=finalMods, grid=ee)
+```
+
+Let's save this large `homeRanges` object as an `.rds` file for ease of access.
+
+```{r akde-save, echo=TRUE, tidy=TRUE}
+# export homeRanges
+saveRDS(homeRanges, "../Results/akdehomeranges.rds")
+homeRanges <- readRDS("../Results/akdehomeranges.rds")
+```
+
+### Home range area estimation
+
+Now that we have estimated the Utilization Distribution of each of our snowshoe 
+hares, we can estimate the size of the home range at the three isopleths of
+interest for our study, i.e. the 90%, 75%, and 50% isopleth (the "core area"; 
+@Borger2006). `ctmm` produces estimates bounded by the 95% confidence intervals
+by default, which will come in handy when we plot these estimates. We will store
+each estimate in a separate object: `hr_ninety`, `hr_seventyfive`, and `hr_fifty`.
+
+```{r hr-area-estimation, echo=TRUE, tidy=TRUE}
+# get home range size at 90% kernel 
+hr_size90 <- lapply(1:length(homeRanges),
+                  function(i)
+                    summary(homeRanges[[i]], level.UD = 0.90, units=TRUE)$CI)
+names(hr_size90) <- names(homeRanges)
+hr_ninety <- plyr::ldply(hr_size90, data.frame)
+hr_ninety <- dplyr::rename(hr_ninety, c(frequency = .id, ninety = est))
+hr_ninety
+
+# get home range size at 75% kernel 
+hr_size75 <- lapply(1:length(homeRanges),
+                  function(i)
+                    summary(homeRanges[[i]], level.UD = 0.75, units=TRUE)$CI)
+names(hr_size75) <- names(homeRanges)
+hr_seventyfive <- plyr::ldply(hr_size75, data.frame)
+hr_seventyfive <- dplyr::rename(hr_seventyfive, c(frequency = .id, seventyfive = est))
+hr_seventyfive
+
+# get core area size at 50% kernel 
+core_size <- lapply(1:length(homeRanges),
+                  function(i)
+                    summary(homeRanges[[i]], level.UD=0.50, units=TRUE)$CI)
+names(core_size) <- names(homeRanges)
+hr_fifty <- plyr::ldply(core_size, data.frame)
+hr_fifty <- dplyr::rename(hr_fifty, c(frequency = .id, core = est))
+hr_fifty
+```
+
+Looking at the three objects, some estimates appear to have units of $m^2$, 
+rather than hectares. The next code chunk takes care of this issue, and creates
+a new objects called `kernels` that contains all three home range size estimates.
+
+```{r hr-units-fix, echo=TRUE, tidy=TRUE}
+# three collars returned core areas in m^2 instead of hectares 
+# divide those rows by 10,000 to convert back to hectare 
+# rows to change are 8,9,22
+# create a vector of the row indexes
+r <- c(2L, 12L, 26L, 30L)
+# divide the content of the cells at those row indexes by 10000 to convert to ha
+hr_fifty <- hr_fifty %>% 
+  dplyr::mutate(core = ifelse(dplyr::row_number() %in% r, core/10000, core)) %>% 
+  dplyr::mutate(low = ifelse(dplyr::row_number() %in% r, low/1000, low)) %>% 
+  dplyr::mutate(high = ifelse(dplyr::row_number() %in% r, high/10000, high))
+
+r <- 2L
+
+# divide the content of the cells at those row indexes by 10000 to convert to ha
+hr_seventyfive <- hr_seventyfive %>% 
+  dplyr::mutate(seventyfive = ifelse(dplyr::row_number() %in% r, seventyfive/10000, seventyfive)) %>% 
+  dplyr::mutate(low = ifelse(dplyr::row_number() %in% r, low/1000, low)) %>%
+  dplyr::mutate(high = ifelse(dplyr::row_number() %in% r, high/10000, high))
+
+# divide the content of the cells at those row indexes by 10000 to convert to ha
+hr_ninety <- hr_ninety %>% 
+  dplyr::mutate(ninety = ifelse(dplyr::row_number() %in% r, ninety/10000, 
+                                ninety)) %>% 
+  dplyr::mutate(low = ifelse(dplyr::row_number() %in% r, low/1000, low)) %>%
+  dplyr::mutate(high = ifelse(dplyr::row_number() %in% r, high/10000, high))
+
+# join home range and core together 
+kernels <- dplyr::inner_join(hr_ninety, hr_seventyfive, by = "frequency") %>% dplyr::inner_join(., hr_fifty, by = "frequency")
+# calculate range use ratio with 50:95 home range areas 
+kernels <- tibble::add_column(kernels, ratio = kernels$core/kernels$ninety)
+# test if the 50% and 95% home range areas are correlated 
+# ggplot(data = kernels, aes(x = core, y = ninety)) +
+#   geom_point() + theme_classic()
+# highly correlated, don't use ratio going forward.
+
+kernels
+```
+
+### Exporting the home range estimates
+
+Here we export the UD at each of the three isopleths of interest as 
+`SpatialPolygonsDataFrame` objects, to use in later analyses and plotting.
+
+```{r}
+# export 95% kernels 
+ninety <- lapply(1:length(homeRanges), 
+                 function(x) SpatialPolygonsDataFrame.UD(homeRanges[[x]], 
+                                                         level.UD=0.90, 
+                                                         overwrite=TRUE))
+names(ninety) <- names(homeRanges)
+
+# export 75% kernels 
+seventyfive <- lapply(1:length(homeRanges), 
+                      function(x) SpatialPolygonsDataFrame.UD(homeRanges[[x]], 
+                                                              level.UD=0.75, 
+                                                              overwrite=TRUE))
+names(seventyfive) <- names(homeRanges)
+
+# export 50% kernels 
+fifty <- lapply(1:length(homeRanges), 
+                function(x) SpatialPolygonsDataFrame.UD(homeRanges[[x]], 
+                                                        level.UD=0.50, 
+                                                        overwrite=TRUE))
+names(fifty) <- names(homeRanges)
+```
+
+Finally, for visualization purposes, the next code chunk produces a raster
+file containing the complete UD for all 31 hares. The code chunk is currently
+turned off.
+
+```{r rasterbrick, eval=FALSE, include=FALSE}
+# create and export RasterBrick
+# in the case of coarse grids, the value of PDF in a grid cell corresponds to 
+# the average probability density over the entire rectangular cell.
+# PDF: probability density function, which is >=0 and integrates to 1. Its 
+# values are continuous probability densities for the point location
+# akde does not re-normalize the density estimate - which is why it does not 
+# sum to 1 when calculating PDF error = 0.001 in akde() targets error in 
+# probability mass to be less than error argument, so the integration
+# of probability mass within cells should be more accurate
+# use probability density function - higher values correspond to more intense 
+# space use (note: NOT normalized to 1)
+r <- lapply(1:length(homeRanges), 
+            function(x) ctmm::raster(homeRanges[[x]], 
+                                     filename= names(homeRanges), DF="PDF"))
+b <- raster::stack(r)
+
+names(b) <- names(hares.telem.clean)
+
+writeRaster(b, "akde_homerange_pdf.tif", format="GTiff", overwrite=TRUE)
+```
+
+## Extracting Stoichiometric Data from the Home Ranges
+
+Now that we have home range size estimates at the 50%, 75%, and 90% isopleths, 
+we can overlay these on top of our Stoichiometric Distribution Models rasters 
+to extract data on the C:N, C:P, and N:P ratios of lowland blueberry and red 
+maple in the areas used by our snowshoe hares. First, let's clip the StDMs 
+rasters to our study area. This will make spatial operations a bit less time and 
+computation intensive.
+
+```{r stdms-clip, echo=TRUE, tidy=TRUE, fig.cap="Clipped StDMs predictions raster for lowland blueberry C:N ratio, before and after reprojection to the WGS84 UTM Zone 22 datum."}
+# define the extent of our study area 
+e <- extent(860000, 863000, 5383000, 5386000)
+
+# clip each StDM raster to the extent e
+vaancnclip <- crop(vaanCN, e)
+image(vaancnclip) # check the cropping weorked
+vaancpclip <- crop(vaanCP, e)
+vaannpclip <- crop(vaanNP, e)
+acrucnclip <- crop(acruCN, e)
+acrunpclip <- crop(acruNP, e)
+
+# reproject rasters so that they are using an up to date datum (WGS84 UTM Zone 22)
+vaancnclip <- projectRaster(vaancnclip, crs="+init=epsg:32622")
+vaancpclip <- projectRaster(vaancpclip, crs="+init=epsg:32622")
+vaannpclip <- projectRaster(vaannpclip, crs="+init=epsg:32622")
+acrucnclip <- projectRaster(acrucnclip, crs="+init=epsg:32622")
+acrunpclip <- projectRaster(acrunpclip, crs="+init=epsg:32622")
+image(vaancnclip) # check the reprojecting worked
+
+# create a rasterStack from these rasters 
+stoich_stack <- raster::stack(vaancnclip, vaancpclip, vaannpclip, acrucnclip, acrunpclip)
+```
+
+Finally, the code chunk below extracts the stoichiometric data from the StDMs 
+raster for the areas under the home ranges. For each isopleth, we create a 
+separate object containing the stoichiometric data (`stoich50`, `stoich75`, 
+`stoich90`), and save it as a `.csv` file. 
+
+```{r stoich-extraction, echo=TRUE, tidy=TRUE}
+# extract the stoich values for all the 50% home ranges
+stoich.hr50 <- lapply(1:length(fifty), 
+                      function(x) raster::extract(stoich_stack, fifty[[x]], 
+                                                  method = "simple", 
+                                                  weights = TRUE, 
+                                                  df = TRUE, 
+                                                  small = TRUE,
+                                                  normalizeWeights = TRUE, 
+                                                  cellnumbers = TRUE))
+names(stoich.hr50) <- names(homeRanges)
+
+stoich50 <- dplyr::bind_rows(stoich.hr50, .id = "column_label") %>% 
+  dplyr::rename(., CollarFrequency = column_label)
+
+# we only want ID = 2 because the SpatialPolygonsDataFrame had 3 polygons
+# low CI, estimate HR, high CI
+stoich50 <- subset(stoich50, ID==2)
+
+# write .csv for Matteo
+write.csv(stoich50, "../Results/stoich50.csv")
+
+# extract the stoich values for all the 75% home ranges
+stoich.hr75 <- lapply(1:length(seventyfive), 
+                      function(x) raster::extract(stoich_stack, seventyfive[[x]], 
+                                                  method = "simple",
+                                                  weights = TRUE, 
+                                                  df = TRUE,
+                                                  small = TRUE,
+                                                  normalizeWeights = TRUE,
+                                                  cellnumbers = TRUE))
+names(stoich.hr75) <- names(homeRanges)
+
+stoich75 <- dplyr::bind_rows(stoich.hr75, .id = "column_label") %>% 
+  dplyr::rename(., CollarFrequency = column_label)
+
+stoich75 <- subset(stoich75, ID==2)
+
+write.csv(stoich75, "../Results/stoich75.csv")
+
+# extract the stoich values for all the 90% home ranges
+stoich.hr90 <- lapply(1:length(ninety), 
+                      function(x) raster::extract(stoich_stack, ninety[[x]], 
+                                                  method = "simple",
+                                                  weights = TRUE, 
+                                                  df = TRUE, 
+                                                  small = TRUE,
+                                                  normalizeWeights = TRUE,
+                                                  cellnumbers = TRUE))
+names(stoich.hr90) <- names(homeRanges)
+
+stoich90 <- dplyr::bind_rows(stoich.hr90, .id = "column_label") %>% 
+  dplyr::rename(., CollarFrequency = column_label)
+
+stoich90 <- subset(stoich90, ID==2)
+
+write.csv(stoich90, "../Results/stoich90.csv")
+```
+
+We will use the three object `stoich50`, `stoich75`, and `stoich90` in the 
+following sections to model the relationship between foraging resources' 
+stoichiometry and home range size at the 50%, 75%, and 90% isopleths.
