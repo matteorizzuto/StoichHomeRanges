@@ -763,7 +763,7 @@ tmap_mode("plot")
 canmap <- tm_shape(canada_s) + tm_polygons(col = "PRUID", palette = starea_col, alpha = 0.5) + tm_shape(study.area) + tm_symbols(col = "#e28dbe", border.col = "black", size = 0.5) + tm_layout(asp=1, inner.margins = c(0.01, 0.01, 0.01, 0.01), bg.color = NA, legend.show = F) 
 
 # create the map of the study areas
-starea_map <- tm_shape(nlcoast) + tm_borders() + tm_shape(grid_points_all) +
+starea_map <- tm_shape(nl_sf) + tm_borders() + tm_shape(grid_points_all) +
   tm_symbols(col = "SiteName", size = 1, palette = starea_palette, border.col = "black") + 
   tm_compass(position = c("right", "top"), size = 2, text.size = 2) + 
   tm_scale_bar(position = c("left", "bottom"), text.size = 1.2) +
@@ -780,7 +780,7 @@ starea_map
 # save the map with inset
 vp <- viewport(x = 0.227, y = 0.7332, width = 0.45, height = 0.45)
 
-tmap_save(starea_map, insets_tm = canmap, insets_vp = vp, filename = "../Results/StudyAreaMap.pdf", dpi = 600)
+# tmap_save(starea_map, insets_tm = canmap, insets_vp = vp, filename = "../Results/StudyAreaMap.pdf", dpi = 600)
 ```
 
 
