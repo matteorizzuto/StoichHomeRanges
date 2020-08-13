@@ -31,7 +31,7 @@ documentclass: article
 bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
 csl: ../Manuscripts/ecology.csl
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r dependencies-load, eval=FALSE, include=FALSE, tidy=TRUE}

@@ -36,8 +36,14 @@ editor_options:
 ```{r, eval=FALSE, echo=TRUE, tidy=TRUE}
 # if running as a standalone, change chunk options to evaluation this 
 # code chunk
-knit("HomeRangeEstimation.Rmd", tangle = TRUE)
-source("HomeRangeEstimation.R")
+knit("StoichiometryOfHomeRanges.Rmd", tangle = TRUE)
+source("StoichiometryOfHomeRanges.R")
+
+knit("razimuthTriangulation.Rmd", tangle = TRUE)
+source("razimuthTriangulation.R")
+
+knit("aKDEHomeRangeEstimation.Rmd", tangle = TRUE)
+source("aKDEHomeRangeEstimation.R")
 
 knit("ModelStoichHR.Rmd", tangle = TRUE)
 source("ModelStoichHR.R")
@@ -654,12 +660,17 @@ Here we present kUD estimates for the home range of each of our snowshoe hares,
 drawing both the 50% ("core area"), 75%, and 90% isopleths on top of a 
 heat map of the whole Utilization Distribution.
 
-> **CODE BELOW WORKS BUT NOT THE BEST TO SHOW THIS**
-
 ```{r akde-maps, echo=TRUE, tidy=TRUE}
 
 # setup hare points
 hares.points <- hares.triangd %>% dplyr::select(., -COVt.x.y, -COV.x.x, -COV.y.y, -pid.x, -pid.y, -id.x, -id.y, -cpid) %>% dplyr:: rename(., CollarFrequency = indiv, Easting = long, Northing = lat)
+
+# remove pseudoreplicated individuals
+hares.points <- subset(hares.points, hares.points$CollarFrequency != "149.653" & 
+                        hares.points$CollarFrequency != "149.053" & 
+                        hares.points$CollarFrequency != "149.003" & 
+                        hares.points$CollarFrequency != "149.274" &
+                        hares.points$CollarFrequency != "149.555")
 
 coordinates(hares.points) <- c("Easting", "Northing")
 proj4string(hares.points) <- CRS("+init=epsg:4326")
@@ -672,17 +683,26 @@ bl_grid_points <- st_transform(bl_grid_pts, st_crs(hares.points))
 # convert hare.points to sf
 hares.points <- st_as_sf(hares.points)
 
+# remove pseudoreplicated home ranges UDs
+homeRangesClean <- homeRanges
+names(homeRangesClean) <- names(homeRanges)
+homeRangesClean <- homeRangesClean[-c(1,2,8,18)]
+
 # extract the UD contours at 50%, 75%, and 90% isopleths
-homeRanges.50 <- lapply(1:length(homeRanges), function(x) SpatialPolygonsDataFrame.UD(homeRanges[[x]], level.UD=0.50, level = 0.95))
-homeRanges.75 <- lapply(1:length(homeRanges), function(x) SpatialPolygonsDataFrame.UD(homeRanges[[x]], level.UD=0.75, level = 0.95))
-homeRanges.90 <- lapply(1:length(homeRanges), function(x) SpatialPolygonsDataFrame.UD(homeRanges[[x]], level.UD=0.90, level = 0.95))
+homeRanges.50 <- lapply(1:length(homeRangesClean), function(x) SpatialPolygonsDataFrame.UD(homeRangesClean[[x]], level.UD=0.50, level = 0.95))
+homeRanges.75 <- lapply(1:length(homeRangesClean), function(x) SpatialPolygonsDataFrame.UD(homeRangesClean[[x]], level.UD=0.75, level = 0.95))
+homeRanges.90 <- lapply(1:length(homeRangesClean), function(x) SpatialPolygonsDataFrame.UD(homeRangesClean[[x]], level.UD=0.90, level = 0.95))
 
 
 # create a palette for these lines
 aKDE.pal <- c("#ef3b2c", "#fb6a4a", "#fc9272")
 
 # create index vector for loop 
-loopCIDs <- names(homeRanges)
+loopCIDs <- names(homeRangesClean)
+
+
+# allocate empty list to store maps
+aKDE.maps <- list()
 
 # loop to produce the maps
 
@@ -740,12 +760,13 @@ for (i in 1:length(loopCIDs)) {
   aKDE.maps[[i]] <- 
     tm_shape(vaancnclip, bbox = bbox_temp, raster.downsample = FALSE) + 
     tm_raster(style = "pretty", palette = "-PRGn", 
-              legend.show = TRUE, title = "Blueberry C:N") + 
+              legend.show = TRUE, title = "Blueberry C:N", alpha = 0.5) + 
     tm_shape(bl_grid_pts) + 
     tm_dots(size = 0.3, shape = 18, col = "red", alpha = 0.3) + # grid trap locs
-    tm_shape(points.temp)
-    tm_shape(icrSf.temp) + 
-    tm_lines(col = "id", palette = red.pal, title.col = "% kUD -- ICR", lwd = 2) +
+    tm_shape(points.temp) +
+    tm_dots(size = 0.3, shape = 21, col = "blue", alpha = 0.3) +
+    tm_shape(aKDEsf.temp) + 
+    tm_lines(col = "id", palette = aKDE.pal, title.col = "% kUD -- ICR", lwd = 2) +
     tm_compass(position = c("right", "top")) +
     tm_scale_bar(width = 0.3, 
                  text.size = 1.25,
@@ -758,251 +779,15 @@ for (i in 1:length(loopCIDs)) {
               legend.title.size = 1.25,
               asp = 1,
               frame = TRUE)
-  
-  # Sys.sleep(1)
-  # browser()
-  
-  # print(hares.kUD.maps[[i]])
-  
-  # browser()
+
 }
 
 # arrange maps into a single visualization
-ICRvMRmaps <- tmap_arrange(ICRvMR.kUD.maps)
+aKDEmaps <- tmap_arrange(aKDE.maps)
 
+tmap_save(aKDEmaps, filename = "../Results/aKDEmaps.pdf", width = 20, height = 20, dpi = 600)
 
-```
-
-
-```{r}
-# create and export RasterBrick
-# in the case of coarse grids, the value of PDF in a grid cell corresponds to the average probability density over the entire rectangular cell.
-# PDF: probability density function, which is >=0 and integrates to 1. Its values are continuous probability densities for the point location
-# akde does not re-normalize the density estimate - which is why it does not sum to 1 when calculating PDF
-# error = 0.001 in akde() targets error in probability mass to be less than error argument, so the integration
-# of probability mass within cells should be more accurate
-# use probability density function - higher values correspond to more intense space use (note: NOT normalized to 1)
-r <- lapply(1:length(homeRanges), function(x) ctmm::raster(homeRanges[[x]], filename= names(homeRanges), DF="PDF"))
-names(r) <- names(hares.telem.clean)
-# save list of rasters - easier to work with in 5-HomeRangeExtraction.R
-saveRDS(r, "../Results/akderasters.rds")
-# load grid points
-bl_grid_pts <- sf::st_transform(bl_grid_points, "+init=epsg:32622")
-
-# load home range area rasters - in a list (95% home range area in hectares)
-kernel95 <- readRDS("../Results/akderasters.rds")
-# normalize rasters so they are between 0,1
-kernel95norm <- lapply(kernel95, spatialEco::raster.transformation)
-# check that they are the same spatially
-image(kernel95norm[[1]])
-image(kernel95[[1]])
-# create raster stack so extraction is possible
-kernel95stack <- stack(kernel95norm)
-names(kernel95stack) <- names(kernel95)
-#### Home Ranges --------
-# use clamp to transform any values under 0.15 to Nas
-kernel95normz <- lapply(kernel95norm, function(i) raster::clamp(i, lower=0.15, useValues=FALSE))
-# save clamped raster
-saveRDS(kernel95normz, "../Results/rasternormclamp.rds")
-clam <- readRDS("../Results/rasternormclamp.rds")
-# stack clamped rasters and merge them - can see individuals when plotted 
-clams <- raster::stack(clam)
-kernel95normm <- raster::merge(clams)
-# stack original raster list and overlay, summing values where there 
-# is more than one raster - shows collective when plotted
-kernel95norms <- raster::stack(kernel95norm)
-over <- raster::overlay(kernel95norms, fun=sum)
-# # read in complexity sampling points
-# bl_cs_pts <- read_sf("input/Mapping", layer = "cs_points")
-# bl_cs_pts <- sf::st_transform(bl_cs_pts, "+init=epsg:32622")
-# # read in trap sampling points
-# bl_grid_pts <- read_sf("input/Mapping", layer = "bl_grid_points")
-# bl_grid_pts <- sf::st_transform(bl_grid_pts, "+init=epsg:32622")
-# set extent to include all home ranges but not be too large
-e <- raster::extent(278000,280000,5359000,5360500)
-# plot merged data - individuals 
-t <- tm_shape(kernel95normm, bbox=e)+
-  tm_raster(title = "kUD", style = "cont", 
-            palette = "-RdYlBu", alpha=0.9)+
-  tm_scale_bar()+
-  tm_xlab("Easting")+
-  tm_ylab("Northing")+
-  tm_shape(bl_grid_pts)+
-  tm_dots(size = 0.15, shape = 4)+
-  tm_legend()+
-  tm_layout(legend.bg.color = "white")
-t
-tmap_save(t, "graphics/kUD_raster_grids.png")
-```
-
-
-<!-- ## 50% kUD Overlap visualization -->
-
-<!-- The map below allows visualization of the home ranges from the three years of -->
-<!-- study and their overlap in an interactive way. We plot the home ranges on a -->
-<!-- StDM raster of C:N for blueberry, but other options are available by re the code chunk. -->
-```{r kUD-overlap-50, eval=FALSE, include=FALSE, tidy=TRUE}
-# Create a bounding box
-bbox_bldots <- st_bbox(hares.triangd.LG) # current bounding box
-
-xrange <- bbox_bldots$xmax - bbox_bldots$xmin # range of x values
-yrange <- bbox_bldots$ymax - bbox_bldots$ymin # range of y values
-
-bbox_bldots[1] <- bbox_bldots[1] - (0.05 * xrange) # xmin - left
-bbox_bldots[3] <- bbox_bldots[3] + (0.05 * xrange) # xmax - right
-bbox_bldots[2] <- bbox_bldots[2] - (0.05 * yrange) # ymin - bottom
-bbox_bldots[4] <- bbox_bldots[4] + (0.05 * yrange) # ymax - top
-
-bbox_bldots <- bbox_bldots %>%  # take the bounding box ...
-      st_as_sfc() # ... and make it a sf polygon
-
-# add to each kUD its eartag and year of sampling
-
-for (i in 1:length(hares.kUD)) {
-  hares.kUDhr.50@data[["eartag"]][i] <- as.character(hare.stoich$EarTag[i])
-  hares.kUDhr.50@data[["year"]][i] <- as.character(hare.stoich$SamplingYear[i])
-}
-
-hares.kUDhr.50@data[["eartag"]] <- as.factor(hares.kUDhr.50@data[["eartag"]])
-
-hares.kUDhr.50@data[["year"]] <- as.factor(hares.kUDhr.50@data[["year"]])
-
-
-kUD50overlap_map <- tm_shape(vaanCN, bbox = bbox_bldots, name = "Blueberry C:N") +
-  tm_raster(style = "cont", palette = "-PRGn", legend.show = TRUE, title = "Blueberry C:N") +
-  # tm_shape(vaanCP, bbox = bbox_bldots) +
-  # tm_raster(style = "cont", palette = "-PRGn", legend.show = TRUE, title = "Blueberry C:P") +
-  # tm_shape(vaanNP, bbox = bbox_bldots) +
-  # tm_raster(style = "cont", palette = "-PRGn", legend.show = TRUE, title = "Blueberry N:P") +
-  # tm_shape(acruCN, bbox = bbox_bldots) +
-  # tm_raster(style = "cont", palette = "-PRGn", legend.show = TRUE, title = "Red Maple C:N") +
-  #   tm_shape(acruNP, bbox = bbox_bldots) +
-  # tm_raster(style = "cont", palette = "-PRGn", legend.show = TRUE, title = "Red Maple N:P") +
-      tm_shape(bl_grid_pts, is.master = T,
-                                     name = "Trap Locations") +
-  tm_dots(size = 0.1, col = "red") +
-     tm_shape(hares.kUDhr.50, name = "Snowshow hare 50% kUD") +
-     tm_polygons(col = "id", alpha = 0.7, style = "fixed", title = "Collar Frequency") +
-     tm_compass(position = c("left", "top"), text.size = 0.8) +
-     tm_scale_bar(text.size = 0.8,
-                  position = c("right", "bottom")) +
-     tm_layout(legend.outside = TRUE,
-               legend.outside.position = "right",
-               asp = 1,
-               frame = TRUE,
-               title = "Snowshoe hare 50% kUD") +
-  tmap_options(max.categories = 34) + tm_facets(by = "eartag", as.layers = TRUE)
-
-tmap_mode(mode = "view")
-
-kUD50overlap_map
-
-# tmap_save(filename = "OL_interactiveMap.html")
-```
-
-
-
-```{r kUD-visual, eval=FALSE, include=FALSE, tidy=TRUE}
-# the following custom function gets the estimated percent contours of a kernel UD
-# Taken from: https://mgritts.github.io/2016/06/01/visualize-utilization-distribution/
-getContours <- function(ud, pct) {
-  ids <- as.character(pct)
-  x <- getvolumeUD(ud)
-  xyma <- coordinates(x)
-  xyl <- list(x = unique(xyma[, 1]), y = unique(xyma[, 2]))
-  z <- as.image.SpatialGridDataFrame(x[, 1])$z
-  
-  cl <- lapply(pct, function(x) {
-    contourLines(x = xyl$x, y = xyl$y, z, nlevels = 1, levels = x)
-  })
-  
-  plys <- lapply(seq_along(cl), function(i) {
-    Polygons(lapply(seq_along(cl[[i]]), function(j) {
-      m <- cl[[i]][[j]]
-      ply <- cbind(m$x, m$y)
-      ply <- rbind(ply, ply[1, ])
-      Polygon(ply)
-    }), ID = ids[i])
-  })
-  
-  plys <- lapply(plys, function(x) checkPolygonsHoles(x))
-  splys <- SpatialPolygons(plys)
-  dff <- data.frame(id = ids)
-  row.names(dff) <- ids
-  spdf <- SpatialPolygonsDataFrame(splys, dff)
-  return(spdf)
-}
-
-# extract volume of kUDs to plot later underneath the isopleths
-hares.vol <- getvolumeUD(hares.kUD)
-
-# get 50% and 90% contours from kUD of each hare
-hares.kUD.contour <- lapply(hares.kUD, function(x) getContours(x, pct = c(50, 75, 90)))
-
-# allocate empty list to store tmap objects for each map created below
-hares.kUD.maps <- vector("list", length(UniqCIDs.bl))
-
-# sort the unique identifiers 
-UniqCIDs.bl <- sort(UniqCIDs.bl)
-
-# create a grey scale palette for isopleths, black for 50%, dark gray for 75% and light grey 
-# for 90%
-grey.pal <- c("#000000", "#4c4c4c", "#a6a6a6") 
-
-# loop to produce a map for each hare showing a heatmap of the kUD and the 
-# 50% and 90% isopleths
-for (i in 1:length(UniqCIDs.bl)) {
-    # store contours for the current collar in a temporary linear object
-    lines.temp <- as(hares.kUD.contour[[i]], "SpatialLinesDataFrame") 
-    
-    # add a crs to the temporary linear object
-    crs(lines.temp) <- crs(hares.triangd) 
-    
-    bbox_temp <- st_bbox(lines.temp) # current bounding box
-    
-    xrange <- bbox_temp$xmax - bbox_temp$xmin # range of x values
-    yrange <- bbox_temp$ymax - bbox_temp$ymin # range of y values
-    
-    bbox_temp[1] <- bbox_temp[1] - (0.25 * xrange) # xmin - left
-    bbox_temp[3] <- bbox_temp[3] + (0.25 * xrange) # xmax - right
-    bbox_temp[2] <- bbox_temp[2] - (0.25 * yrange) # ymin - bottom
-    bbox_temp[4] <- bbox_temp[4] + (0.25 * yrange) # ymax - top
-    
-    bbox_temp <- bbox_temp %>%  # take the bounding box ...
-      st_as_sfc() # ... and make it a sf polygon
-    
-    # create a map using tmap and store it in its own slots in the list created
-    # above
-    hares.kUD.maps[[i]] <- tm_shape(hares.vol[[i]], bbox = bbox_temp) + 
-      tm_raster(palette = "-YlOrRd", n = 10) + 
-      tm_shape(lines.temp, unit = "km") + 
-      tm_lines(col = "id", palette = grey.pal, title.col = "% kUD", lwd = 2) +
-      tm_compass(position = c("right", "top")) +
-      tm_scale_bar(width = 0.3, 
-                   text.size = 1.25,
-                   position = c("right", "bottom")) + 
-      tm_layout(main.title = paste("Collar Frequency:", UniqCIDs.bl[i]),
-                # title = paste("Ear tag:", dots.temp$EarTag),
-                legend.outside = TRUE, 
-                legend.outside.position = "right",
-                legend.text.size = 1.1,
-                legend.title.size = 1.5,
-                asp = 1,
-                frame = FALSE)
-    
-    # Sys.sleep(1)
-    # browser()
-    
-    print(hares.kUD.maps[[i]])
-    
-    rm(lines.temp) # remove the temp linear object to avoid errors
-}
-
-# arrange and print the maps
-# kUDmaps <- tmap_arrange(hares.kUD.maps, ncol = 7, nrow = 4)
-# kUDmaps
-
-# tmap_save(hares.kUD.maps[[i]], filename = "../Results/kUDsSelection_example.png", dpi = 300)
+rm(homeRangesClean)
 ```
 
 ### StDM Predictions Maps
