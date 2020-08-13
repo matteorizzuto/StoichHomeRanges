@@ -62,7 +62,8 @@ to plotting mode, so all maps will be shown as plots unless otherwise specified.
 tmap_mode("plot")
 ```
 
-## Manuscript Figures {.tabset .tabset-fade .tabset-pills}
+## Manuscript Figures {.tabset .tabset-fade}
+
 Here we provide the code to produce the main text's Figure 1d and Figure 2. 
 First, we need to allocate several vectors containing custom-made lists of 
 labels, shapes, and colours to highlight data points representing hares with 2 
@@ -220,7 +221,7 @@ visall <- vis2_50kUD + vis2_75kUD + vis2_90kUD + vis3_50kUD + vis3_75kUD + vis3_
 ggsave(visall, filename = "../Results/VAAN_HRvsCN.pdf", device = "pdf", dpi = 600, width = 25, height = 15)
 ```
 
-### Elemental concentrations of N and P in Red Maple and Blueberry
+## Elemental concentrations of N and P in Red Maple and Blueberry
 
 Here we use boxplots to visualize data on the elemental
 (% dry weight) composition of both Red Maple and Blueberry. Note that
@@ -270,7 +271,7 @@ epPlot <- ggplot(data = epData, aes(x = Species, y = Content, fill = Species)) +
 ggsave(epPlot, filename = "../Results/epPlot.pdf", device = "pdf", dpi = 600, width = 12, height = 8)
 ```
  
-### Browsing Data visualization
+## Browsing Data visualization
 
 Here we present a simple bar plot of the frequency with which we recorded browsing
 by snowshoe hare on our four plant species of interest. We collected browsing data 
@@ -308,7 +309,7 @@ ggplot(data = browseData, aes(x = hareBrowse)) +
         text = element_text(size = 12))
 ```
 
-### Relationship among Body Weight, Age, and Sex
+## Relationship among Body Weight, Age, and Sex
 
 Here we show the relationships between snowshoe hare body weight and age, and 
 body weight and sex in our sample. Note that we could not build a true correlation
@@ -332,9 +333,9 @@ age + sex
 ```
 
 
-### Stoichiometric Ratios values vs Individuals' Core Area Size {.tabset .tabset-fade .tabset-pills}
+## Stoichiometric Ratios values vs Individuals' Core Area Size {.tabset .tabset-fade .tabset-pills}
 
-#### C:N Ratio
+### C:N Ratio
 ```{r ACRU-HR-1, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(x = ACRU_CN_mean, y = HRsize, shape = SamplingYear)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
@@ -351,7 +352,7 @@ ggplot(hare.stoich, aes(x = VAAN_CN_mean, y = HRsize, shape = SamplingYear)) +
   theme_classic()
 ```
 
-#### N:P Ratio
+### N:P Ratio
 ```{r ACRU-HR-2, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(x = ACRU_NP_mean, y = HRsize, shape = SamplingYear)) + geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + xlab("Red Maple Mean N:P") + ylab("Home Range Size (ha)") + theme_classic()
 ```
@@ -364,7 +365,7 @@ ggplot(hare.stoich, aes(x = VAAN_NP_mean, y = HRsize, shape = SamplingYear)) +
   theme_classic()
 ```
 
-#### C:P Ratio
+### C:P Ratio
 ```{r VAAN-HR-3, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(x = VAAN_CP_mean, y = HRsize, shape = SamplingYear)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
@@ -373,9 +374,9 @@ ggplot(hare.stoich, aes(x = VAAN_CP_mean, y = HRsize, shape = SamplingYear)) +
   theme_classic()
 ```
 
-### Stoichiometric ratios mean vs CV {.tabset .tabset-fade .tabset-pills}
+## Stoichiometric ratios mean vs CV {.tabset .tabset-fade .tabset-pills}
 
-#### Red Maple C:N
+### Red Maple C:N
 ```{r acrucn-mean-vs-cvar, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(ACRU_CN_mean, y = ACRU_CN_CVar)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
@@ -384,7 +385,7 @@ ggplot(hare.stoich, aes(ACRU_CN_mean, y = ACRU_CN_CVar)) +
   theme_classic() 
 ```
 
-#### Red Maple N:P
+### Red Maple N:P
 ```{r acrunp-mean-vs-cvar, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(ACRU_NP_mean, y = ACRU_NP_CVar)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
@@ -393,7 +394,7 @@ ggplot(hare.stoich, aes(ACRU_NP_mean, y = ACRU_NP_CVar)) +
   theme_classic() 
 ```
 
-#### Blueberry C:N
+### Blueberry C:N
 ```{r vaancn-mean-vs-cvar, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(VAAN_CN_mean, y = VAAN_CN_CVar)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
@@ -402,7 +403,7 @@ ggplot(hare.stoich, aes(VAAN_CN_mean, y = VAAN_CN_CVar)) +
   theme_classic() 
 ```
 
-#### Blueberry N:P
+### Blueberry N:P
 ```{r vaannp-mean-vs-cvar, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(VAAN_NP_mean, y = VAAN_NP_CVar)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) +
@@ -411,7 +412,7 @@ ggplot(hare.stoich, aes(VAAN_NP_mean, y = VAAN_NP_CVar)) +
   theme_classic() 
 ```
 
-#### Blueberry C:P
+### Blueberry C:P
 ```{r vaancp-mean-vs-cvar, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(VAAN_CP_mean, y = VAAN_CP_CVar)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
@@ -420,7 +421,7 @@ ggplot(hare.stoich, aes(VAAN_CP_mean, y = VAAN_CP_CVar)) +
   theme_classic() 
 ```
 
-### Overlap vs stoich {.tabset .tabset-fade .tabset-pills}
+## Overlap vs stoich
 
 We want to investigate if, in areas of high resource quality (i.e., low average  
 stoichiometric ratios values) or low variability in resource quality (i.e., low 
@@ -477,7 +478,7 @@ btot <- b1 + b2 + b3 + b4 + b5 + plot_annotation(title = "Stoichiometry CV and M
 btot
 ```
 
-### Kernel Utilization Distributions
+## Kernel Utilization Distributions
 
 Here we present kUD estimates for the home range of each of our snowshoe hares, 
 drawing both the 50% ("core area"), 75%, and 90% isopleths on top of a 
@@ -608,7 +609,7 @@ tmap_save(aKDEmaps, filename = "../Results/aKDEmaps.pdf", width = 20, height = 2
 rm(homeRangesClean)
 ```
 
-### StDM Predictions Maps
+## StDM Predictions Maps
 Here we plot the predictions of ratios values for C:N, C:P, and N:P produced 
 using Stoichiometric Distribution Models [@Leroux2017]. We used these 
 predictions in the analyses above as estimates of the quality of plant food 
@@ -617,44 +618,28 @@ only present a map of the StDM predictions for blueberry C:N. If you would like
 to see maps for blueberry C:P, N:P, and red maple C:N, N:P predictions, re-knit
 this notebook after un-commenting the relevant lines of code in the chunk below.
 
-```{r raster-Maps, echo=TRUE, warning=FALSE, tidy=TRUE}
-# Load a base map of the island of Newfoundland
-nl_coastline <- read_sf(dsn = "../Data/Mapping/", layer = "NL_Dissolve1")
-
-# Simplify the geometry of the coastline, simplifying the lines by removing 
-# vertices, while preserving the topology
-# This step should improve runtime of this section of the notebook
-nlcoast<- ms_simplify(nl_coastline)
-
-# Apply the same projection as the StDMs raster layers to shapefiles we will use
-bl_all <- st_transform(bl.mcp.all, crs = st_crs(vaanNP))
-
-nlcoastsf <- st_as_sf(nlcoast, crs = st_crs(vaanNP))
+```{r raster-Maps, echo=TRUE, warning=FALSE, tidy=TRUE, fig.cap="Map of our snowshoe hare live-trapping grid in the youngest forest stand (20-40 years old), with stoichiometric distribution models predictions for lowland blueberry C:N ratio."}
 
 # Create a bounding box for the study area, to show in the inset reference map
-st_bbox(bl_all)
+st_bbox(bl_grid_pts)
 
-bl.study.area <- st_bbox(c(xmin = 860700, xmax = 862700, 
-                           ymin = 5383500, ymax = 5385600), 
-                         crs = st_crs(vaanNP)) %>% st_as_sfc()
-
-bl.study.area <- st_bbox(bl_all) # current bounding box
+bl.study.area <- st_bbox(bl_grid_pts) # current bounding box
 
 xrange <- bl.study.area$xmax - bl.study.area$xmin # range of x values
 yrange <- bl.study.area$ymax - bl.study.area$ymin # range of y values
-    
-bl.study.area[1] <- bl.study.area[1] - (0.25 * xrange) # xmin - left
-bl.study.area[3] <- bl.study.area[3] + (0.25 * xrange) # xmax - right
-bl.study.area[2] <- bl.study.area[2] - (0.25 * yrange) # ymin - bottom
-bl.study.area[4] <- bl.study.area[4] + (0.25 * yrange) # ymax - top
-    
+
+bl.study.area[1] <- bl.study.area[1] - (0.75 * xrange) # xmin - left
+bl.study.area[3] <- bl.study.area[3] + (0.75 * xrange) # xmax - right
+bl.study.area[2] <- bl.study.area[2] - (0.75 * yrange) # ymin - bottom
+bl.study.area[4] <- bl.study.area[4] + (0.75 * yrange) # ymax - top
+
 bl.study.area <- bl.study.area %>%  # take the bounding box ...
   st_as_sfc() # ... and make it a sf polygon
 
 # Mapping the raster underneath the grid and the 100% MCP
-vaanCNmap <- tm_shape(vaanCN, bbox = bl.study.area) + 
+vaanCNmap <- tm_shape(vaancnclip, bbox = bl.study.area) + 
   tm_raster(style = "cont", palette = "-PRGn", 
-            legend.show = TRUE, title = "Blueberry C:N") + 
+            legend.show = TRUE, title = "Blueberry C:N", alpha = 0.75) + 
   # tm_shape(vaanCP, bbox = bl.study.area) + 
   # tm_raster(style = "cont", palette = "-PiYG", 
   #           legend.show = TRUE, title = "Blueberry C:P") + 
@@ -668,9 +653,9 @@ vaanCNmap <- tm_shape(vaanCN, bbox = bl.study.area) +
   # tm_raster(style = "cont", palette = "-BrBG", 
   #           legend.show = TRUE, title = "Red Maple C:N") + 
   # tmap_options(max.raster = c(plot = 11308939, view = 11308939)) + 
-  tm_shape(bl_grid_points) + tm_dots(size = 0.3, col = "red", alpha = 0.3) + 
-  tm_shape(bl_all) + tm_polygons(alpha = 0, lty = 2, lwd = 5, 
-                                 border.col = "red") + 
+  tm_shape(bl_grid_points) + tm_dots(size = 0.3, col = "red", shape = 18) + 
+  # tm_shape(bl_all) + tm_polygons(alpha = 0, lty = 2, lwd = 5, 
+  #                                border.col = "red") + 
   # tm_compass(position = c("right", "top")) + tm_scale_bar() + 
   tm_layout(legend.outside = TRUE, 
             legend.outside.position = "right")
@@ -679,14 +664,14 @@ vaanCNmap <- tm_shape(vaanCN, bbox = bl.study.area) +
 # nl_map <- tm_shape(nlcoast)+ tm_polygons() + tm_shape(bl.study.area) + tm_polygons(col = "red", border.col = "red", lwd = 10)
 
 # visualize
-# tmap_mode("view")
+tmap_mode("plot")
 vaanCNmap
 
 # Save statement
 # tmap_save(vaanCNmap, insets_tm = nl_map, insets_vp = viewport(x = .75, y = .166, width = 0.3, height = 0.3), height = 10, width = 18, filename = "../Results/BL_VaanCN.png", dpi = 300)
 ```
 
-### Map of Study Area
+## Map of Study Area
 
 ```{r study-area-map-prep, echo=TRUE, tidy=TRUE}
 # convert SiteName in the grid points shp file to a factor
@@ -719,7 +704,7 @@ starea_col[c(2:13)] <- "white"
 starea_col[1] <- "gray75"
 
 # set crs for canada
-canada_s <- st_transform(canada_s, st_crs(bl_grid_points))
+canada_s <- st_transform(canada_s, st_crs(bl_grid_pts))
 
 
 # Simplify the geometry of the coastline, simplifying the lines by removing 
@@ -729,7 +714,7 @@ nlcoast<- ms_simplify(nl_coastline)
 
 nlcoastsf <- st_as_sf(nlcoast, crs = st_crs(na_coastline))
 
-nl_sf <- st_transform(nlcoastsf, crs = st_crs(bl_grid_points))
+nl_sf <- st_transform(nlcoastsf, crs = st_crs(bl_grid_pts))
 
 # Create a bounding box for the study area, to show in the inset reference map
 st_bbox(grid_points_all)
@@ -773,6 +758,7 @@ Conversely, here we show the code to produce the static map of the study area
 found in the Supplementary Information document. Note that we do not show the 
 output of this code chunk, as it is already available in the SI.
 ```{r study-area-map-static, echo=TRUE, tidy=TRUE}
+tmap_mode("plot")
 # create map of canada with newfoundland highlighted
 canmap <- tm_shape(canada_s) + tm_polygons(col = "PRUID", palette = starea_col, alpha = 0.5) + tm_shape(study.area) + tm_symbols(col = "#e28dbe", border.col = "black", size = 0.5) + tm_layout(asp=1, inner.margins = c(0.01, 0.01, 0.01, 0.01), bg.color = NA, legend.show = F) 
 
@@ -786,7 +772,7 @@ starea_map <- tm_shape(nlcoast) + tm_borders() + tm_shape(grid_points_all) +
             asp = 1.25,
             legend.show = F)
 
-# starea_map
+starea_map
 # 
 # namap
 # print(canmap, grid::viewport(x = 0.202, y = 0.73, width = 0.45, height = 0.45))
@@ -798,7 +784,6 @@ tmap_save(starea_map, insets_tm = canmap, insets_vp = vp, filename = "../Results
 ```
 
 
-# References
 
 <!-- The code below includes options to generate these custom lists for analyses that -->
 <!-- exclude data from 2017. -->

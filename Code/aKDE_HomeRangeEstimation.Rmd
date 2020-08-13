@@ -262,7 +262,7 @@ Collar Frequency  Long. outliers  Cutoff Longitude  Lat. outliers  Cutoff Latitu
 First, let's temporarily remove them and check visually how the new maps would 
 look like without them.
 
-```{r individual-outliers-test-removal, echo=TRUE, tidy=TRUE}
+```{r individual-outliers-test-removal, echo=TRUE, tidy=TRUE, message=FALSE}
 # 149.053
 subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.053") %>% dplyr::filter(., location.lat > (48.348)) %>% dplyr::filter(., location.lat < (48.352)) # removing 1 points past 48.348 and 1 point past 48.352
 plotOutliers(subsetOutlier,1,nrow(subsetOutlier)) # looks better
@@ -340,7 +340,7 @@ only one triangulation attempt per day per collar. The `plotVariograms` function
 was developed by @Droghini2020. Each variogram is saved as a `.png` image in 
 `../Results/Variograms/Data`.
 
-```{r variograms-check, echo=TRUE, tidy=TRUE}
+```{r variograms-check, echo=TRUE, tidy=TRUE, message=FALSE}
 # looking at the variograms to explore space use patterns
 # load varioPlot function from function-plotVariograms.R 
 # zoom is false because there is only one measurement taken per day (max)
@@ -409,6 +409,11 @@ file for ease of access in later analyses.
 
 ```{r ctmm-fit-save, echo=TRUE, tidy=TRUE}
 saveRDS(hares.fit.e, "../Results/haresfitraz.rds")
+```
+
+Now, let's load the file we just saved and continue on.
+
+```{r ctmm-fit-load, echo=TRUE, tidy=TRUE}
 hares.fit.e <- readRDS("../Results/haresfitraz.rds")
 ```
 
@@ -464,7 +469,7 @@ plot the models' fits to the variograms of our telemetry data. Different colours
 represent different models fit to the data. In this case, we are going to save
 each variogram as `.png` image in `../Results/Variograms/Models`.
 
-```{r ctmm-variograms-fit, echo=TRUE, tidy=TRUE}
+```{r ctmm-variograms-fit, echo=TRUE, tidy=TRUE, message=FALSE, warning=FALSE}
 # plot variograms with model fit
 filePath <- paste("../Results/Variograms/Models")
 

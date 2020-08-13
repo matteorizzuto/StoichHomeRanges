@@ -228,7 +228,7 @@ estimate the location of collars in the field using razimuth. -->
 <!-- The following code chunk loads the Rmd file to estimate home range size 
 using ctmm and then extract data on foliage stoichiometry of plant species from
 inside the home range-->
-```{r child=here::here("aKDEHomeRangeEstimation.Rmd")}
+```{r child=here::here("aKDE_HomeRangeEstimation.Rmd")}
 
 ```
 
@@ -260,3 +260,5 @@ overlap in home range between consecutive years for four snowshoe hares -->
 ```{r child=here::here("AdditionalPlots.Rmd")}
 
 ```
+
+# References
