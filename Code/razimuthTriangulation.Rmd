@@ -84,6 +84,11 @@ grid_points_all <- read_sf(dsn = "../Data/GridPoints",
 bl_grid_points <- subset(grid_points_all, 
                          grid_points_all$SiteName == "Bloomfield")
 
+# convert to WGS84
+bl_grid_pts <- bl_grid_points %>% dplyr::select(SiteName,TrapName)
+
+bl_grid_points <- st_transform(bl_grid_pts, 4326)
+
 # Load the StDMs raster layers
 acruCN <- raster("../Data/StDMs_Rasters/Ratios/ACRU_CN.tif")
 acruNP <- raster("../Data/StDMs_Rasters/Ratios/ACRU_NP.tif")
@@ -385,7 +390,7 @@ a single relocation at the time, for each collar. This can get really
 out of hand, so we are going to save these plots as PDFs in a dedicate subfolder
 in the `Results` folder. 
 
-```{r atm-prep-and-vis, echo=TRUE,tidy=TRUE, message=FALSE}
+```{r atm-prep-and-vis-1, echo=TRUE,tidy=TRUE, message=FALSE}
 # AR helped with this code - github.com/robitalec
 # For all individuals 
 # Unique individuals
@@ -438,7 +443,7 @@ want or cannot run this portion of the code. The pre-generated file can be
 found here: 
 `../Results/razimuth_lsfits.rds`
 
-```{r atm-fit, echo=TRUE, tidy=TRUE}
+```{r atm-fit, eval=FALSE, tidy=TRUE}
 tictoc::tic() # start timing how long it will take to run
 # Model all
 lsfits <- lapply(lsatms, atm_mcmc, n_mcmc = 10000, n_burn = 1000)
@@ -448,7 +453,7 @@ tictoc::toc() # return total run time
 Given the extremely long runtime of the above code chunk, saving its output is a
 good idea to save time in future iterations of this notebook.
 
-```{r atm-fits-save, echo=TRUE, tidy=TRUE, message=FALSE, results="hide"}
+```{r atm-fits-save, eval=FALSE, tidy=TRUE, message=FALSE, results="hide"}
 # save the resulting model fits as and .rds object
 # this step allows us to not run the whole code each time, instead
 # skipping ahead of the most computationla intensive part
@@ -563,7 +568,7 @@ date-time stamp for each relocation. We will first get this information from the
 `vhfData` object created above, then add it to the `hares.atm` dataframe we 
 just created.
 
-```{r date-time-stamp, echo=TRUE, tidy=TRUE}
+```{r date-time-stamp-1, echo=TRUE, tidy=TRUE}
 # now need to get date-time stamp for each reloc for MoveBank 
 # get the first date-time for each indiv/obs_id from vhfData
 dates <- vhfData %>% 

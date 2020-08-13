@@ -31,7 +31,7 @@ documentclass: article
 bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
 csl: ../Manuscripts/ecology.csl
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r eval=FALSE, include=FALSE, tidy=TRUE}
@@ -409,11 +409,6 @@ file for ease of access in later analyses.
 
 ```{r ctmm-fit-save, echo=TRUE, tidy=TRUE}
 saveRDS(hares.fit.e, "../Results/haresfitraz.rds")
-```
-
-Now let's load the file we just saved the keep going. 
-
-```{r ctmm-fit-load, echo=TRUE, tidy=TRUE}
 hares.fit.e <- readRDS("../Results/haresfitraz.rds")
 ```
 
@@ -569,11 +564,9 @@ estimate the area of the home range. This step of the estimation uses the AKDEc
 method [@Fleming2019].
 
 ```{r akde-estimation, echo=TRUE, tidy=TRUE}
-tictoc::tic()
 # calculate home ranges
 # debias = TRUE debiases the distribution for area estimation (AKDEc, Fleming et al., 2019)
 homeRanges <- akde(data=hares.telem.clean, debias=TRUE, CTMM=finalMods, grid=ee)
-tictoc::toc()
 ```
 
 Let's save this large `homeRanges` object as an `.rds` file for ease of access.
@@ -581,11 +574,6 @@ Let's save this large `homeRanges` object as an `.rds` file for ease of access.
 ```{r akde-save, echo=TRUE, tidy=TRUE}
 # export homeRanges
 saveRDS(homeRanges, "../Results/akdehomeranges.rds")
-```
-
-And again let's load the file we just saved, to continue with our analyses.
-
-```{r akde-load, echo=TRUE, tidy=TRUE}
 homeRanges <- readRDS("../Results/akdehomeranges.rds")
 ```
 
@@ -675,7 +663,7 @@ kernels
 Here we export the UD at each of the three isopleths of interest as 
 `SpatialPolygonsDataFrame` objects, to use in later analyses and plotting.
 
-```{r ud-export, echo=TRUE, tidy=TRUE}
+```{r akde-export, echo=TRUE, tidy=TRUE}
 # export 95% kernels 
 ninety <- lapply(1:length(homeRanges), 
                  function(x) SpatialPolygonsDataFrame.UD(homeRanges[[x]], 
@@ -700,12 +688,12 @@ names(fifty) <- names(homeRanges)
 
 ## Extracting Stoichiometric Data from the Home Ranges
 
-Now that we have home range size estimates at the 50%, 75%, and 90% isopleths, 
+Now that we have home range size estimates at the 50%, 75%, and 90% isopleths,
 we can overlay these on top of our Stoichiometric Distribution Models rasters 
 to extract data on the C:N, C:P, and N:P ratios of lowland blueberry and red 
 maple in the areas used by our snowshoe hares. First, let's clip the StDMs 
-rasters to our study area. This will make spatial operations a bit less time and 
-computation intensive.
+rasters to our study area. This will make spatial operations a bit less time 
+and computation intensive.
 
 ```{r stdms-clip, echo=TRUE, tidy=TRUE, fig.cap="Clipped StDMs predictions raster for lowland blueberry C:N ratio, before and after reprojection to the WGS84 UTM Zone 22 datum."}
 # define the extent of our study area 

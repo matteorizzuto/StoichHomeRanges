@@ -34,15 +34,12 @@ editor_options:
   chunk_output_type: inline
 ---
 
-```{r}
+```{r shpfile-load, echo=TRUE, tidy=TRUE}
 # read the forest shapefile from the Land Cover geodatabase
 forest_gdb <- read_sf("../../Mapping", layer = "Forest")
 
-forest_reproj <- st_transform(forest_gdb, CRS("+init=epsg:32622"))
-
-forest_clip <- st_crop(forest_reproj, e)
+forest_clip <- st_crop(forest_gdb, e)
 ```
-
 
 ## Utilization Distribution Overlap across years
 
