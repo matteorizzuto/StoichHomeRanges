@@ -77,7 +77,7 @@ hareDemData$SamplingYear <- as.factor(hareDemData$SamplingYear)
 
 # load the spatial layout of our sampling grids
 grid_points_all <- read_sf(dsn = "../Data/GridPoints", 
-                           layer = "GridPts_withFRI")
+                           layer = "SamplePoints")
 
 # subset the Bloomfield grid, which we will use as a visual reference
 # for the position of our grid in space
@@ -85,9 +85,11 @@ bl_grid_points <- subset(grid_points_all,
                          grid_points_all$SiteName == "Bloomfield")
 
 # convert to WGS84
-bl_grid_pts <- bl_grid_points %>% dplyr::select(SiteName,TrapName)
+# bl_grid_pts <- bl_grid_points %>% dplyr::select(SiteName,PlotName)
 
-bl_grid_points <- st_transform(bl_grid_pts, 4326)
+bl_grid_pts <- st_transform(bl_grid_points, 4326)
+
+grid_points_all <- st_transform(grid_points_all, 4326)
 
 # Load the StDMs raster layers
 acruCN <- raster("../Data/StDMs_Rasters/Ratios/ACRU_CN.tif")
