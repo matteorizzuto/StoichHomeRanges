@@ -6,10 +6,11 @@ author:
   - Matteo Rizzuto^[<a href="https://orcid.org/0000-0003-3065-9140">https://orcid.org/0000-0003-3065-9140</a>, Memorial University of Newfoundland, <a href="mrizzuto@.mun.ca">mrizzuto@mun.ca</a>] 
   - Shawn J. Leroux^[<a href="https://orcid.org/0000-0001-9580-0294">https://orcid.org/0000-0001-9580-0294</a>, Memorial University of Newfoundland]
   - Eric Vander Wal^[<a href="https://orcid.org/0000-0002-8534-4317">https://orcid.org/0000-0002-8534-4317</a>, Memorial University of Newfoundland]
-  - Yolanda F. Wiersma^[<a href="https://orcid.org/0000-0003-4604-9240">https://orcid.org/0000-0003-4604-9240</a>, Memorial University of Newfoundland]
+  - Isabella C. Richmond^[<a href="https://orcid.org/0000-0001-5079-8442">https://orcid.org/0000-0001-5079-8442</a>, Memorial University of Newfoundland]
   - Travis R. Heckford^[<a href="https://orcid.org/0000-0002-3993-6450">https://orcid.org/0000-0002-3993-6450</a>, Memorial University of Newfoundland]
   - Juliana Balluffi-Fry^[<a href="https://orcid.org/0000-0002-2365-1055">https://orcid.org/0000-0002-2365-1055</a>, Memorial University of Newfoundland]
-  - Isabella C. Richmond^[<a href="https://orcid.org/0000-0001-5079-8442">https://orcid.org/0000-0001-5079-8442</a>, Memorial University of Newfoundland]
+  - Yolanda F. Wiersma^[<a href="https://orcid.org/0000-0003-4604-9240">https://orcid.org/0000-0003-4604-9240</a>, Memorial University of Newfoundland]
+  
 output:
   rmdformats::html_clean:
     self_contained: true
