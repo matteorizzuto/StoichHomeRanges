@@ -5,7 +5,7 @@ Code contains the R notebooks necessary to replicate our analyses
 
 * StoichiometryOfHomeRanges.Rmd contains the load statement for all R packages needed to run our analyses; it is also a modular notebook that compiles into the Supporting Code document for our paper
 * TriangulationError.Rmd performs analyses to quantify the triangulation error of two of the observers who collected the telemetry data
-* razimuthTriangulation.Rmd performs triangulation of our snowshoe hare telemetry data using package razimuth
+* razimuthTriangulation.Rmd performs triangulation of our snowshoe hare telemetry data using package [razimuth](https://github.com/cppeck/razimuth)
 * aKDEHomeRangeEstimation.Rmd uses package ctmm to estimate the utilization distribution (UD) of our study animals, estimate home range size from the UD, and extract stoichiometric data from two preferred forage plant species from within the home range
 * HomeRangeOverlap.Rmd investigates UD overlap among four snowshoe hares sampled for more than one year
 * ModelStoichHR.Rmd models the relationship between plant stoichiometry and snowshoe hare home range size estimated at the 50% UD isopleth
@@ -20,3 +20,6 @@ Data contains all data necessary to replicate our analyses
 * MR_ErrorReduction.csv and BS_ErrorReduction.csv contain the triangulation data from triangulation error reduction exercises and are used in TriangulationError.Rmd
 * ErrorTrials_trueLocs.csv contains the true locations of the radiocollars using the the triangulation error reduction exercises and in TriangulationError.Rmd to estimate average error for two observers
 * StDMS_Rasters/ is a folder containing raster files of the ecelogical stoichiometry of lowland blueberry (VAAN) and red maple (ACRU) used in our analyses
+
+Results contains the output of the more time-consuming and computationally intensive step of the analyses, for ease of replication
+* razimuth_lsfits.rds, this file contains the results from fitting the azimuthal telemetry model from package [razimuth](https://github.com/cppeck/razimuth) to our triangulation data and is called in the razimuthTriangulation.Rmd notebook to speed up the triangulation process
