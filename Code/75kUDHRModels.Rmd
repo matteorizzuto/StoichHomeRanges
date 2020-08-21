@@ -204,7 +204,7 @@ hare.rich.75 <- subset(hare.stoich.75, hare.stoich.75$CollarFrequency != "149.65
 hare.rich.mod <- lm(HRsize ~ SamplingYear, data = hare.rich.75) 
 
 summary(hare.rich.mod)
-lindia::gg_diagnose(hare.rich.mod)
+# lindia::gg_diagnose(hare.rich.mod)
 
 ggplot(data = hare.rich.75, aes(x = SamplingYear, y = HRsize)) + geom_boxjitter(outlier.intersect = TRUE) + xlab("Sampling Year") + ylab("Home Range Size (ha)") + theme_classic() + theme(text = element_text(size = 18))
 # ggsave(filename = "../Results/HRsizeDataRich.png")
@@ -256,7 +256,7 @@ hare.year.75 <- subset(hare.stoich.75, hare.stoich.75$CollarFrequency != "150.17
 hare.year.mod <- lm(HRsize ~ SamplingYear, data = hare.year.75) 
 
 summary(hare.year.mod)
-lindia::gg_diagnose(hare.year.mod)
+# lindia::gg_diagnose(hare.year.mod)
 
 ggplot(data = hare.year.75, aes(x = SamplingYear, y = HRsize)) + geom_boxjitter(outlier.intersect = TRUE) + xlab("Sampling Year") + labs(y=expression("Home range size (ha)")) + theme_classic() + theme(text = element_text(size = 18))
 # ggsave(filename = "../Results/HRsizeSYear.png")
@@ -289,12 +289,12 @@ acruCNhr.75 <- lm(HRsize ~ ACRU_CN_mean, data = hare.rich.75)
 summary(acruCNhr.75)
 ```
 
-*Diagnostic plots*
-```{r 75-ACRU-CN-only-diag, echo=TRUE, tidy=TRUE}
-# diagnostic plots using lindia package
+<!-- *Diagnostic plots* -->
+<!-- ```{r 75-ACRU-CN-only-diag, echo=TRUE, tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
 
-gg_diagnose(acruCNhr.75, theme = theme_classic())
-```
+<!-- gg_diagnose(acruCNhr.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Coeff. Var.-only
 ```{r 75-ACRU-CN-cv-only, echo=TRUE, tidy=TRUE, warning=FALSE}
@@ -304,29 +304,29 @@ acruCNcvhr.75 <- lm(HRsize ~ ACRU_CN_CVar, data = hare.rich.75)
 summary(acruCNcvhr.75)
 ```
 
-*Diagnostic plots*
-```{r 75-ACRU-CN-cv-only-diag, echo=TRUE, tidy=TRUE}
-# diagnostic plots using lindia package
-gg_diagnose(acruCNcvhr.75, theme = theme_classic())
-```
+<!-- *Diagnostic plots* -->
+<!-- ```{r 75-ACRU-CN-cv-only-diag, echo=TRUE, tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(acruCNcvhr.75, theme = theme_classic()) -->
+<!-- ``` -->
 
-*Data vs Predicted Plot*
-```{r 75-data-vs-pred-acrucn-1, echo=TRUE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
-hare.predplot <- augment(acruCNcvhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+<!-- *Data vs Predicted Plot* -->
+<!-- ```{r 75-data-vs-pred-acrucn-1, echo=TRUE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
+<!-- hare.predplot <- augment(acruCNcvhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid))  -->
 
-ggplot(hare.predplot, aes(x = ACRU_CN_CVar, y = HRsize)) +
-  geom_segment(aes(xend = ACRU_CN_CVar, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("Average Blueberry N:P") +
-  ylab("Home Range size (ha)") +
-  ggtitle("75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  theme_few()
-```
+<!-- ggplot(hare.predplot, aes(x = ACRU_CN_CVar, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = ACRU_CN_CVar, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("Average Blueberry N:P") + -->
+<!--   ylab("Home Range size (ha)") + -->
+<!--   ggtitle("75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   theme_few() -->
+<!-- ``` -->
 
 #### Mean + Weight
 ```{r 75-ACRU-CN-multi,echo=TRUE,tidy=TRUE}
@@ -336,11 +336,11 @@ acruCNhr.exp.75 <- lm(HRsize ~ ACRU_CN_mean + WeightSSH_g, data = hare.rich.75)
 # check model output
 summary(acruCNhr.exp.75)
 ```
-*Diagnostic Plots*
-```{r 75-ACRU-CN-multi-diag,echo=TRUE,tidy=TRUE}
-# diagnostic plots using lindia package
-gg_diagnose(acruCNhr.exp.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-ACRU-CN-multi-diag,echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(acruCNhr.exp.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Coeff. Var. + Weight
 ```{r 75-ACRU-CN-multi-cv,echo=TRUE,tidy=TRUE}
@@ -350,38 +350,38 @@ acruCNcv.exp.75 <- lm(HRsize ~ ACRU_CN_CVar + WeightSSH_g, data = hare.rich.75)
 summary(acruCNcv.exp.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-ACRU-CN-multi-cv-diag,echo=TRUE,tidy=TRUE}
-# diagnostic plots using lindia package
-gg_diagnose(acruCNcv.exp.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-ACRU-CN-multi-cv-diag,echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(acruCNcv.exp.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 <!-- *Data vs Predicted Plot* -->
-```{r 75-data-vs-pred-acrucn-2, eval=FALSE, include=FALSE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
+<!-- ```{r 75-data-vs-pred-acrucn-2, eval=FALSE, include=FALSE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
 
-hare.predplot <- augment(acruCNcv.exp.75, se_fit = TRUE) %>% 
-  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
-  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+<!-- hare.predplot <- augment(acruCNcv.exp.75, se_fit = TRUE) %>%  -->
+<!--   dplyr::select(-c(.se.fit, .hat:.std.resid)) %>%  -->
+<!--   gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd) -->
 
-covariates_names <- c(
-  `ACRU_CN_CVar` = "Average Red Maple N:P",
-  `WeightSSH_g` = "Snowshoe hare body weight (g)"
-)
+<!-- covariates_names <- c( -->
+<!--   `ACRU_CN_CVar` = "Average Red Maple N:P", -->
+<!--   `WeightSSH_g` = "Snowshoe hare body weight (g)" -->
+<!-- ) -->
 
-ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
-  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("") +
-  ylab("Home Range size (ha) - 75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") + 
-  theme_few() +
-  theme(strip.placement = "outside")
-```
+<!-- ggplot(hare.predplot, aes(x = Value, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("") + -->
+<!--   ylab("Home Range size (ha) - 75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") +  -->
+<!--   theme_few() + -->
+<!--   theme(strip.placement = "outside") -->
+<!-- ``` -->
 
 #### Mean + Coeff. Var.
 ```{r 75-plus-stoich-acrucn-1, echo=TRUE, tidy=TRUE}
@@ -390,10 +390,10 @@ acrucn.plus.75 <- lm(HRsize ~ ACRU_CN_mean+ACRU_CN_CVar, data = hare.rich.75)
 summary(acrucn.plus.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-p-acrucn-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(acrucn.plus.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-p-acrucn-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(acrucn.plus.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean * Coeff. Var.
 ```{r 75-joint-stoich-acrucn-2, echo=TRUE, tidy=TRUE}
@@ -402,10 +402,10 @@ acrucn.joint.75 <- lm(HRsize ~ ACRU_CN_mean*ACRU_CN_CVar, data = hare.rich.75)
 summary(acrucn.joint.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-js-acrucn-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(acrucn.joint.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-js-acrucn-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(acrucn.joint.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean + Coeff. Var. + Weight
 ```{r 75-stoich-weight-acrucn-1, echo=TRUE, tidy=TRUE}
@@ -414,10 +414,10 @@ acrucn.sw.75 <- lm(HRsize ~ ACRU_CN_mean+ACRU_CN_CVar+WeightSSH_g, data = hare.r
 summary(acrucn.sw.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-sw-acrucn-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(acrucn.sw.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-sw-acrucn-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(acrucn.sw.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean * Coeff. Var. + Weight
 ```{r 75-jsw-stoich-acrucn-2, echo=TRUE, tidy=TRUE}
@@ -426,10 +426,10 @@ acrucn.jsw.75 <- lm(HRsize ~ ACRU_CN_mean*ACRU_CN_CVar+WeightSSH_g, data = hare.
 summary(acrucn.jsw.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-jsw-acrucn-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(acrucn.jsw.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-jsw-acrucn-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(acrucn.jsw.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### AICc Table
 ```{r 75-acrucn-aicc-tab, echo=TRUE, tidy=TRUE}
@@ -495,33 +495,33 @@ vaanCNhr.75 <- lm(HRsize ~ VAAN_CN_mean, data = hare.rich.75)
 summary(vaanCNhr.75)
 ```
 
-*Diagnostic plots*
-```{r 75-VAAN-CN-only-diag, echo=TRUE,tidy=TRUE}
-# diagnostic plots using lindia package
+<!-- *Diagnostic plots* -->
+<!-- ```{r 75-VAAN-CN-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
 
-gg_diagnose(vaanCNhr.75, theme = theme_classic())
-```
+<!-- gg_diagnose(vaanCNhr.75, theme = theme_classic()) -->
+<!-- ``` -->
 
-*Data vs Predicted Plot*
-```{r 75-data-vs-pred-vaancn-1, echo=TRUE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
-hare.predplot <- augment(vaanCNhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+<!-- *Data vs Predicted Plot* -->
+<!-- ```{r 75-data-vs-pred-vaancn-1, echo=TRUE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
+<!-- hare.predplot <- augment(vaanCNhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid))  -->
 
-q2<-ggplot(hare.predplot, aes(x = VAAN_CN_mean, y = HRsize)) +
-  geom_segment(aes(xend = VAAN_CN_mean, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("Average Blueberry N:P") +
-  ylab("Home Range size (ha)") +
-  ggtitle("75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  theme_few() + 
-  theme(text = element_text(size = 20))
+<!-- q2<-ggplot(hare.predplot, aes(x = VAAN_CN_mean, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = VAAN_CN_mean, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("Average Blueberry N:P") + -->
+<!--   ylab("Home Range size (ha)") + -->
+<!--   ggtitle("75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   theme_few() +  -->
+<!--   theme(text = element_text(size = 20)) -->
 
-q2
-```
+<!-- q2 -->
+<!-- ``` -->
 
 #### Coeff. Var.-only
 ```{r 75-VAAN-CN-cv-only, echo=TRUE, tidy=TRUE}
@@ -530,32 +530,32 @@ vaanCNcvhr.75 <- lm(HRsize ~ VAAN_CN_CVar, data = hare.rich.75)
 summary(vaanCNcvhr.75)
 ```
 
-*Diagnostic plots*
-```{r 75-VAAN-CN-cv-only-diag, echo=TRUE,tidy=TRUE}
-# diagnostic plots using lindia package
-gg_diagnose(vaanCNcvhr.75, theme = theme_classic())
-```
+<!-- *Diagnostic plots* -->
+<!-- ```{r 75-VAAN-CN-cv-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(vaanCNcvhr.75, theme = theme_classic()) -->
+<!-- ``` -->
 
-*Data vs Predicted Plot*
-```{r 75-data-vs-pred-vaancn-2, echo=TRUE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
-hare.predplot <- augment(vaanCNcvhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+<!-- *Data vs Predicted Plot* -->
+<!-- ```{r 75-data-vs-pred-vaancn-2, echo=TRUE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
+<!-- hare.predplot <- augment(vaanCNcvhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid))  -->
 
-p2 <- ggplot(hare.predplot, aes(x = VAAN_CN_CVar, y = HRsize)) +
-  geom_segment(aes(xend = VAAN_CN_CVar, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("Blueberry C:N Coefficient of Variation") +
-  ylab("Home Range size (ha)") +
-  ggtitle("75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  theme_few()+
-  theme(text = element_text(size = 20))
+<!-- p2 <- ggplot(hare.predplot, aes(x = VAAN_CN_CVar, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = VAAN_CN_CVar, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("Blueberry C:N Coefficient of Variation") + -->
+<!--   ylab("Home Range size (ha)") + -->
+<!--   ggtitle("75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   theme_few()+ -->
+<!--   theme(text = element_text(size = 20)) -->
 
-p2
-```
+<!-- p2 -->
+<!-- ``` -->
 
 #### Mean + Weight
 ```{r 75-VAAN-CN-multi,echo=TRUE,tidy=TRUE}
@@ -564,38 +564,38 @@ vaanCNhr.exp.75 <- lm(HRsize ~ VAAN_CN_mean + WeightSSH_g, data = hare.rich.75)
 
 summary(vaanCNhr.exp.75)
 ```
-*Diagnostic Plots*
-```{r 75-VAAN-CN-multi-diag,echo=TRUE,tidy=TRUE}
-# diagnostic plots using lindia package
-gg_diagnose(vaanCNhr.exp.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-VAAN-CN-multi-diag,echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(vaanCNhr.exp.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 <!-- *Data vs Predicted Plot* -->
-```{r 75-data-vs-pred-vaancn-3, eval=FALSE, include=FALSE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
+<!-- ```{r 75-data-vs-pred-vaancn-3, eval=FALSE, include=FALSE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
 
-hare.predplot <- augment(vaanCNhr.exp.75, se_fit = TRUE) %>% 
-  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
-  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+<!-- hare.predplot <- augment(vaanCNhr.exp.75, se_fit = TRUE) %>%  -->
+<!--   dplyr::select(-c(.se.fit, .hat:.std.resid)) %>%  -->
+<!--   gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd) -->
 
-covariates_names <- c(
-  `VAAN_CN_mean` = "Average Blueberry N:P",
-  `WeightSSH_g` = "Snowshoe hare body weight (g)"
-)
+<!-- covariates_names <- c( -->
+<!--   `VAAN_CN_mean` = "Average Blueberry N:P", -->
+<!--   `WeightSSH_g` = "Snowshoe hare body weight (g)" -->
+<!-- ) -->
 
-ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
-  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("") +
-  ylab("Home Range size (ha) - 75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") + 
-  theme_few() +
-  theme(strip.placement = "outside")
-```
+<!-- ggplot(hare.predplot, aes(x = Value, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("") + -->
+<!--   ylab("Home Range size (ha) - 75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") +  -->
+<!--   theme_few() + -->
+<!--   theme(strip.placement = "outside") -->
+<!-- ``` -->
 
 #### Coeff. Var. + Weight
 ```{r 75-VAAN-CN-multi-cv,echo=TRUE,tidy=TRUE}
@@ -604,37 +604,37 @@ vaanCNcv.exp.75 <- lm(HRsize ~ VAAN_CN_CVar + WeightSSH_g, data = hare.rich.75)
 summary(vaanCNcv.exp.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-VAAN-CN-multi-cv-diag,echo=TRUE,tidy=TRUE}
-# diagnostic plots using lindia package
-gg_diagnose(vaanCNcv.exp.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-VAAN-CN-multi-cv-diag,echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(vaanCNcv.exp.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 <!-- *Data vs Predicted Plot* -->
-```{r 75-data-vs-pred-vaancn-4, eval=FALSE, include=FALSE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
+<!-- ```{r 75-data-vs-pred-vaancn-4, eval=FALSE, include=FALSE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
 
-hare.predplot <- augment(vaanCNcv.exp.75, se_fit = TRUE) %>% 
-  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
-  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+<!-- hare.predplot <- augment(vaanCNcv.exp.75, se_fit = TRUE) %>%  -->
+<!--   dplyr::select(-c(.se.fit, .hat:.std.resid)) %>%  -->
+<!--   gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd) -->
 
-covariates_names <- c(
-  `VAAN_CN_CVar` = "Blueberry C:N Coefficient of Variation",
-  `WeightSSH_g` = "Snowshoe hare body weight (g)"
-)
+<!-- covariates_names <- c( -->
+<!--   `VAAN_CN_CVar` = "Blueberry C:N Coefficient of Variation", -->
+<!--   `WeightSSH_g` = "Snowshoe hare body weight (g)" -->
+<!-- ) -->
 
-ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
-  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("") +
-  ylab("Home Range size (ha) - 75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  facet_grid(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names)) + 
-  theme_few()
-```
+<!-- ggplot(hare.predplot, aes(x = Value, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("") + -->
+<!--   ylab("Home Range size (ha) - 75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   facet_grid(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names)) +  -->
+<!--   theme_few() -->
+<!-- ``` -->
 
 #### Mean + Coeff. Var.
 ```{r 75-plus-stoich-vaancn-1, echo=TRUE, tidy=TRUE}
@@ -645,40 +645,40 @@ summary(vaancn.plus.75)
 confint(vaancn.plus.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-p-vaancn-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(vaancn.plus.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-p-vaancn-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(vaancn.plus.75, theme = theme_classic()) -->
+<!-- ``` -->
 
-*Data vs Predicted Plot*
-```{r 75-data-vs-pred-vaancn-5, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
+<!-- *Data vs Predicted Plot* -->
+<!-- ```{r 75-data-vs-pred-vaancn-5, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
 
-hare.predplot <- augment(vaancn.plus.75, se_fit = TRUE) %>% 
-  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
-  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+<!-- hare.predplot <- augment(vaancn.plus.75, se_fit = TRUE) %>%  -->
+<!--   dplyr::select(-c(.se.fit, .hat:.std.resid)) %>%  -->
+<!--   gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd) -->
 
-covariates_names <- c(
-  `VAAN_CN_mean` = "Blueberry Average C:N",
-  `VAAN_CN_CVar` = "Blueberry C:N Coefficient of Variation"
-)
+<!-- covariates_names <- c( -->
+<!--   `VAAN_CN_mean` = "Blueberry Average C:N", -->
+<!--   `VAAN_CN_CVar` = "Blueberry C:N Coefficient of Variation" -->
+<!-- ) -->
 
-ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
-  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("") +
-  ylab("Home Range size (ha)") +
-  ggtitle("75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  facet_wrap(~ Covariate, scales = "free_x", 
-             labeller = as_labeller(covariates_names), 
-             strip.position = "bottom") + 
-  theme_few() +
-  theme(strip.placement = "outside")
-```
+<!-- ggplot(hare.predplot, aes(x = Value, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("") + -->
+<!--   ylab("Home Range size (ha)") + -->
+<!--   ggtitle("75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   facet_wrap(~ Covariate, scales = "free_x",  -->
+<!--              labeller = as_labeller(covariates_names),  -->
+<!--              strip.position = "bottom") +  -->
+<!--   theme_few() + -->
+<!--   theme(strip.placement = "outside") -->
+<!-- ``` -->
 
 
 #### Mean * Coeff. Var.
@@ -690,10 +690,10 @@ summary(vaancn.joint.75)
 confint(vaancn.joint.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-js-vaancn-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(vaancn.joint.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-js-vaancn-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(vaancn.joint.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean + Coeff. Var. + Weight
 ```{r 75-stoich-weight-vaancn-1, echo=TRUE, tidy=TRUE}
@@ -704,10 +704,10 @@ summary(vaancn.sw.75)
 confint(vaancn.sw.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-sw-vaancn-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(vaancn.sw.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-sw-vaancn-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(vaancn.sw.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean * Coeff. Var. + Weight
 ```{r 75-jsw-stoich-vaancn-2, echo=TRUE, tidy=TRUE}
@@ -716,10 +716,10 @@ vaancn.jsw.75 <- lm(HRsize ~ VAAN_CN_mean*VAAN_CN_CVar+WeightSSH_g, data = hare.
 summary(vaancn.jsw.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-jsw-vaancn-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(vaancn.jsw.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-jsw-vaancn-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(vaancn.jsw.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### AICc Table
 ```{r 75-vaancn-aicc-tab, echo=TRUE, tidy=TRUE}
@@ -786,31 +786,31 @@ acruNPhr.75 <- lm(HRsize ~ ACRU_NP_mean, data = hare.rich.75)
 summary(acruNPhr.75)
 ```
 
-*Diagnostic plots*
-```{r 75-ACRU-NP-only-diag, echo=TRUE,tidy=TRUE}
-# diagnostic plots using lindia package
+<!-- *Diagnostic plots* -->
+<!-- ```{r 75-ACRU-NP-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
 
-gg_diagnose(acruNPhr.75, theme = theme_classic())
-```
+<!-- gg_diagnose(acruNPhr.75, theme = theme_classic()) -->
+<!-- ``` -->
 
-*Data vs Predicted Plot*
-```{r 75-data-vs-pred-acrunp-1, echo=TRUE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
-hare.predplot <- augment(acruNPhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+<!-- *Data vs Predicted Plot* -->
+<!-- ```{r 75-data-vs-pred-acrunp-1, echo=TRUE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
+<!-- hare.predplot <- augment(acruNPhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid))  -->
 
-ggplot(hare.predplot, aes(x = ACRU_NP_mean, y = HRsize)) +
-  geom_segment(aes(xend = ACRU_NP_mean, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("Average Red Maple N:P") +
-  ylab("Home Range size (ha)") +
-  ggtitle("75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  theme_few() +
-  theme(text = element_text(size = 20))
-```
+<!-- ggplot(hare.predplot, aes(x = ACRU_NP_mean, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = ACRU_NP_mean, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("Average Red Maple N:P") + -->
+<!--   ylab("Home Range size (ha)") + -->
+<!--   ggtitle("75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   theme_few() + -->
+<!--   theme(text = element_text(size = 20)) -->
+<!-- ``` -->
 
 #### Coeff. Var.-only
 ```{r 75-ACRU-NP-cv-only, echo=TRUE, tidy=TRUE}
@@ -819,30 +819,30 @@ acruNPcvhr.75 <- lm(HRsize ~ ACRU_NP_CVar, data = hare.rich.75)
 summary(acruNPcvhr.75)
 ```
 
-*Diagnostic plots*
-```{r 75-ACRU-NP-cv-only-diag, echo=TRUE,tidy=TRUE}
-# diagnostic plots using lindia package
-gg_diagnose(acruNPcvhr.75, theme = theme_classic())
-```
+<!-- *Diagnostic plots* -->
+<!-- ```{r 75-ACRU-NP-cv-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(acruNPcvhr.75, theme = theme_classic()) -->
+<!-- ``` -->
 
-*Data vs Predicted Plot*
-```{r 75-data-vs-pred-acrunp-2, echo=TRUE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
-hare.predplot <- augment(acruNPcvhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+<!-- *Data vs Predicted Plot* -->
+<!-- ```{r 75-data-vs-pred-acrunp-2, echo=TRUE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
+<!-- hare.predplot <- augment(acruNPcvhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid))  -->
 
-ggplot(hare.predplot, aes(x = ACRU_NP_CVar, y = HRsize)) +
-  geom_segment(aes(xend = ACRU_NP_CVar, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("Red Maple N:P Coefficient of Variation") +
-  ylab("Home Range size (ha)") +
-  ggtitle("75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  theme_few() +
-  theme(text = element_text(size = 20))
-```
+<!-- ggplot(hare.predplot, aes(x = ACRU_NP_CVar, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = ACRU_NP_CVar, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("Red Maple N:P Coefficient of Variation") + -->
+<!--   ylab("Home Range size (ha)") + -->
+<!--   ggtitle("75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   theme_few() + -->
+<!--   theme(text = element_text(size = 20)) -->
+<!-- ``` -->
 
 #### Mean + Weight
 ```{r 75-ACRU-NP-multi,echo=TRUE,tidy=TRUE}
@@ -852,37 +852,37 @@ acruNPhr.exp.75 <- lm(HRsize ~ ACRU_NP_mean + WeightSSH_g, data = hare.rich.75)
 summary(acruNPhr.exp.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-ACRU-NP-multi-diag,echo=TRUE,tidy=TRUE}
-gg_diagnose(acruNPhr.exp.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-ACRU-NP-multi-diag,echo=TRUE,tidy=TRUE} -->
+<!-- gg_diagnose(acruNPhr.exp.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 <!-- *Data vs Predicted Plot* -->
-```{r 75-data-vs-pred-acrunp-3, eval=FALSE, include=FALSE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
+<!-- ```{r 75-data-vs-pred-acrunp-3, eval=FALSE, include=FALSE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
 
-hare.predplot <- augment(acruNPhr.exp.75, se_fit = TRUE) %>% 
-  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
-  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+<!-- hare.predplot <- augment(acruNPhr.exp.75, se_fit = TRUE) %>%  -->
+<!--   dplyr::select(-c(.se.fit, .hat:.std.resid)) %>%  -->
+<!--   gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd) -->
 
-covariates_names <- c(
-  `ACRU_NP_mean` = "Average Red Maple N:P",
-  `WeightSSH_g` = "Snowshoe hare body weight (g)"
-)
+<!-- covariates_names <- c( -->
+<!--   `ACRU_NP_mean` = "Average Red Maple N:P", -->
+<!--   `WeightSSH_g` = "Snowshoe hare body weight (g)" -->
+<!-- ) -->
 
-ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
-  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("") +
-  ylab("Home Range size (ha) - 75% kZUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") + 
-  theme_few() +
-  theme(strip.placement = "outside")
-```
+<!-- ggplot(hare.predplot, aes(x = Value, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("") + -->
+<!--   ylab("Home Range size (ha) - 75% kZUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") +  -->
+<!--   theme_few() + -->
+<!--   theme(strip.placement = "outside") -->
+<!-- ``` -->
 
 #### Coeff. Var. + Weight
 ```{r 75-ACRU-NP-multi-cv,echo=TRUE,tidy=TRUE}
@@ -891,10 +891,10 @@ acruNPcv.exp.75 <- lm(HRsize ~ ACRU_NP_CVar + WeightSSH_g, data = hare.rich.75)
 summary(acruNPcv.exp.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-ACRU-NP-multi-cv-diag,echo=TRUE,tidy=TRUE}
-gg_diagnose(acruNPcv.exp.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-ACRU-NP-multi-cv-diag,echo=TRUE,tidy=TRUE} -->
+<!-- gg_diagnose(acruNPcv.exp.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean + Coeff. Var.
 ```{r 75-plus-stoich-acrunp-1, echo=TRUE, tidy=TRUE}
@@ -905,37 +905,37 @@ summary(acrunp.plus.75)
 confint(acrunp.plus.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-p-acrunp-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(acrunp.plus.75, theme = theme_classic())
-```
-*Data vs Predicted Plot*
-```{r 75-data-vs-pred-acrunp-4,echo=TRUE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-p-acrunp-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(acrunp.plus.75, theme = theme_classic()) -->
+<!-- ``` -->
+<!-- *Data vs Predicted Plot* -->
+<!-- ```{r 75-data-vs-pred-acrunp-4,echo=TRUE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
 
-hare.predplot <- augment(acrunp.plus.75, se_fit = TRUE) %>% 
-  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
-  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+<!-- hare.predplot <- augment(acrunp.plus.75, se_fit = TRUE) %>%  -->
+<!--   dplyr::select(-c(.se.fit, .hat:.std.resid)) %>%  -->
+<!--   gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd) -->
 
-covariates_names <- c(
-  `ACRU_NP_mean` = "Average Red Maple N:P",
-  `ACRU_NP_CVar` = "Red Maple N:P Coefficient of Variation"
-)
+<!-- covariates_names <- c( -->
+<!--   `ACRU_NP_mean` = "Average Red Maple N:P", -->
+<!--   `ACRU_NP_CVar` = "Red Maple N:P Coefficient of Variation" -->
+<!-- ) -->
 
-ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
-  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("") +
-  ylab("Home Range size (ha)") +
-  ggtitle("75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") + 
-  theme_few() +
-  theme(strip.placement = "outside")
-```
+<!-- ggplot(hare.predplot, aes(x = Value, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("") + -->
+<!--   ylab("Home Range size (ha)") + -->
+<!--   ggtitle("75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") +  -->
+<!--   theme_few() + -->
+<!--   theme(strip.placement = "outside") -->
+<!-- ``` -->
 #### Mean * Coeff. Var.
 ```{r 75-joint-stoich-acrunp-2, echo=TRUE, tidy=TRUE}
 acrunp.joint.75 <- lm(HRsize ~ ACRU_NP_mean*ACRU_NP_CVar, data = hare.rich.75)
@@ -943,38 +943,38 @@ acrunp.joint.75 <- lm(HRsize ~ ACRU_NP_mean*ACRU_NP_CVar, data = hare.rich.75)
 summary(acrunp.joint.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-js-acrunp-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(acrunp.joint.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-js-acrunp-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(acrunp.joint.75, theme = theme_classic()) -->
+<!-- ``` -->
 
-*Data vs Predicted Plot*
-```{r 75-data-vs-pred-acrunp-5,echo=TRUE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
+<!-- *Data vs Predicted Plot* -->
+<!-- ```{r 75-data-vs-pred-acrunp-5,echo=TRUE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
 
-hare.predplot <- augment(acrunp.joint.75, se_fit = TRUE) %>% 
-  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
-  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+<!-- hare.predplot <- augment(acrunp.joint.75, se_fit = TRUE) %>%  -->
+<!--   dplyr::select(-c(.se.fit, .hat:.std.resid)) %>%  -->
+<!--   gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd) -->
 
-covariates_names <- c(
-  `ACRU_NP_mean` = "Average Red Maple N:P",
-  `ACRU_NP_CVar` = "Red Maple N:P Coefficient of Variation"
-)
+<!-- covariates_names <- c( -->
+<!--   `ACRU_NP_mean` = "Average Red Maple N:P", -->
+<!--   `ACRU_NP_CVar` = "Red Maple N:P Coefficient of Variation" -->
+<!-- ) -->
 
-ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
-  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("") +
-  ylab("Home Range size (ha)") +
-  ggtitle("75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") + 
-  theme_few() +
-  theme(strip.placement = "outside")
-```
+<!-- ggplot(hare.predplot, aes(x = Value, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("") + -->
+<!--   ylab("Home Range size (ha)") + -->
+<!--   ggtitle("75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") +  -->
+<!--   theme_few() + -->
+<!--   theme(strip.placement = "outside") -->
+<!-- ``` -->
 
 #### Mean + Coeff. Var. + Weight
 ```{r 75-stoich-weight-acrunp-1, echo=TRUE, tidy=TRUE}
@@ -983,10 +983,10 @@ acrunp.sw.75 <- lm(HRsize ~ ACRU_NP_mean+ACRU_NP_CVar+WeightSSH_g, data = hare.r
 summary(acrunp.sw.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-sw-acrunp-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(acrunp.sw.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-sw-acrunp-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(acrunp.sw.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean * Coeff. Var. + Weight
 ```{r 75-jsw-stoich-acrunp-2, echo=TRUE, tidy=TRUE}
@@ -997,10 +997,10 @@ summary(acrunp.jsw.75)
 # confint(acrunp.jsw.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-jsw-acrunp-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(acrunp.jsw.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-jsw-acrunp-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(acrunp.jsw.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### AICc Table
 ```{r 75-acrunp-aicc-tab, echo=TRUE, tidy=TRUE}
@@ -1066,30 +1066,30 @@ vaanNPhr.75 <- lm(HRsize ~ VAAN_NP_mean, data = hare.rich.75)
 summary(vaanNPhr.75)
 ```
 
-*Diagnostic plots*
-```{r 75-VAAN-NP-only-diag, echo=TRUE,tidy=TRUE}
-# diagnostic plots using lindia package
+<!-- *Diagnostic plots* -->
+<!-- ```{r 75-VAAN-NP-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
 
-gg_diagnose(vaanNPhr.75, theme = theme_classic())
-```
+<!-- gg_diagnose(vaanNPhr.75, theme = theme_classic()) -->
+<!-- ``` -->
 
-*Data vs Predicted Plot*
-```{r 75-data-vs-pred-vaannp-1, echo=TRUE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
-hare.predplot <- augment(vaanNPhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+<!-- *Data vs Predicted Plot* -->
+<!-- ```{r 75-data-vs-pred-vaannp-1, echo=TRUE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
+<!-- hare.predplot <- augment(vaanNPhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid))  -->
 
-ggplot(hare.predplot, aes(x = VAAN_NP_mean, y = HRsize)) +
-  geom_segment(aes(xend = VAAN_NP_mean, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("Average Blueberry N:P") +
-  ylab("Home Range size (ha)") +
-  ggtitle("75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  theme_few()
-```
+<!-- ggplot(hare.predplot, aes(x = VAAN_NP_mean, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = VAAN_NP_mean, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("Average Blueberry N:P") + -->
+<!--   ylab("Home Range size (ha)") + -->
+<!--   ggtitle("75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   theme_few() -->
+<!-- ``` -->
 
 #### Coeff. Var.-only
 ```{r 75-VAAN-NP-cv-only, echo=TRUE, tidy=TRUE}
@@ -1098,11 +1098,11 @@ vaanNPcvhr.75 <- lm(HRsize ~ VAAN_NP_CVar, data = hare.rich.75)
 summary(vaanNPcvhr.75)
 ```
 
-*Diagnostic plots*
-```{r 75-VAAN-NP-cv-only-diag, echo=TRUE,tidy=TRUE}
-# diagnostic plots using lindia package
-gg_diagnose(vaanNPcvhr.75, theme = theme_classic())
-```
+<!-- *Diagnostic plots* -->
+<!-- ```{r 75-VAAN-NP-cv-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(vaanNPcvhr.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean + Weight
 ```{r 75-VAAN-NP-multi,echo=TRUE,tidy=TRUE}
@@ -1113,36 +1113,36 @@ summary(vaanNPhr.exp.75)
 # confint(vaanNPhr.exp.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-VAAN-NP-multi-diag,echo=TRUE,tidy=TRUE}
-gg_diagnose(vaanNPhr.exp.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-VAAN-NP-multi-diag,echo=TRUE,tidy=TRUE} -->
+<!-- gg_diagnose(vaanNPhr.exp.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 <!-- *Data vs Predicted Plot* -->
-```{r 75-data-vs-pred-vaannp-2, eval=FALSE, include=FALSE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
+<!-- ```{r 75-data-vs-pred-vaannp-2, eval=FALSE, include=FALSE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
 
-hare.predplot <- augment(vaanNPhr.exp.75, se_fit = TRUE) %>% 
-  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
-  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+<!-- hare.predplot <- augment(vaanNPhr.exp.75, se_fit = TRUE) %>%  -->
+<!--   dplyr::select(-c(.se.fit, .hat:.std.resid)) %>%  -->
+<!--   gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd) -->
 
-covariates_names <- c(
-  `VAAN_NP_mean` = "Average Blueberry N:P",
-  `WeightSSH_g` = "Snowshoe hare body weight (g)"
-)
+<!-- covariates_names <- c( -->
+<!--   `VAAN_NP_mean` = "Average Blueberry N:P", -->
+<!--   `WeightSSH_g` = "Snowshoe hare body weight (g)" -->
+<!-- ) -->
 
-ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
-  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("") +
-  ylab("Home Range size (ha) - 75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  facet_grid(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names)) + 
-  theme_few()
-```
+<!-- ggplot(hare.predplot, aes(x = Value, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("") + -->
+<!--   ylab("Home Range size (ha) - 75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   facet_grid(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names)) +  -->
+<!--   theme_few() -->
+<!-- ``` -->
 
 #### Coeff. Var. + Weight
 ```{r 75-VAAN-NP-multi-cv,echo=TRUE,tidy=TRUE}
@@ -1151,10 +1151,10 @@ vaanNPcv.exp.75 <- lm(HRsize ~ VAAN_NP_CVar + WeightSSH_g, data = hare.rich.75)
 summary(vaanNPcv.exp.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-VAAN-NP-multi-cv-diag,echo=TRUE,tidy=TRUE}
-gg_diagnose(vaanNPcv.exp.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-VAAN-NP-multi-cv-diag,echo=TRUE,tidy=TRUE} -->
+<!-- gg_diagnose(vaanNPcv.exp.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean + Coeff. Var.
 ```{r 75-plus-stoich-vaannp-1, echo=TRUE, tidy=TRUE}
@@ -1165,10 +1165,10 @@ summary(vaannp.plus.75)
 # confint(vaannp.plus.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-p-vaannp-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(vaannp.plus.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-p-vaannp-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(vaannp.plus.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean * Coeff. Var.
 ```{r 75-joint-stoich-vaannp-2, echo=TRUE, tidy=TRUE}
@@ -1177,10 +1177,10 @@ vaannp.joint.75 <- lm(HRsize ~ VAAN_NP_mean*VAAN_NP_CVar, data = hare.rich.75)
 summary(vaannp.joint.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-js-vaannp-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(vaannp.joint.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-js-vaannp-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(vaannp.joint.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean + Coeff. Var. + Weight
 ```{r 75-stoich-weight-vaannp-1, echo=TRUE, tidy=TRUE}
@@ -1189,10 +1189,10 @@ vaannp.sw.75 <- lm(HRsize ~ VAAN_NP_mean+VAAN_NP_CVar+WeightSSH_g, data = hare.r
 summary(vaannp.sw.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-sw-vaannp-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(vaannp.sw.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-sw-vaannp-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(vaannp.sw.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean * Coeff. Var. + Weight
 ```{r 75-jsw-stoich-vaannp-1, echo=TRUE, tidy=TRUE}
@@ -1201,10 +1201,10 @@ vaannp.jsw.75 <- lm(HRsize ~ VAAN_NP_mean*VAAN_NP_CVar+WeightSSH_g, data = hare.
 summary(vaannp.jsw.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-jsw-vaannp-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(vaannp.jsw.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-jsw-vaannp-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(vaannp.jsw.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 
 #### AICc Table
@@ -1273,30 +1273,30 @@ summary(vaanCPhr.75)
 confint(vaanCPhr.75)
 ```
 
-*Diagnostic plots*
-```{r 75-VAAN-CP-only-diag, echo=TRUE,tidy=TRUE}
-# diagnostic plots using lindia package
+<!-- *Diagnostic plots* -->
+<!-- ```{r 75-VAAN-CP-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
 
-gg_diagnose(vaanCPhr.75, theme = theme_classic())
-```
+<!-- gg_diagnose(vaanCPhr.75, theme = theme_classic()) -->
+<!-- ``` -->
 
-*Data vs Predicted Plot*
-```{r 75-data-vs-pred-vaancp-1, echo=TRUE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
-hare.predplot <- augment(vaanCPhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid)) 
+<!-- *Data vs Predicted Plot* -->
+<!-- ```{r 75-data-vs-pred-vaancp-1, echo=TRUE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
+<!-- hare.predplot <- augment(vaanCPhr.75, se_fit = TRUE) %>% dplyr::select(-c(.se.fit, .hat:.std.resid))  -->
 
-ggplot(hare.predplot, aes(x = VAAN_CP_mean, y = HRsize)) +
-  geom_segment(aes(xend = VAAN_CP_mean, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("Average Blueberry C:P") +
-  ylab("Home Range size (ha)") +
-  ggtitle("75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  theme_few()
-```
+<!-- ggplot(hare.predplot, aes(x = VAAN_CP_mean, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = VAAN_CP_mean, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("Average Blueberry C:P") + -->
+<!--   ylab("Home Range size (ha)") + -->
+<!--   ggtitle("75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   theme_few() -->
+<!-- ``` -->
 
 #### Coeff. Var.-only
 ```{r 75-VAAN-CP-cv-only, echo=TRUE, tidy=TRUE}
@@ -1305,11 +1305,11 @@ vaanCPcvhr.75 <- lm(HRsize ~ VAAN_CP_CVar, data = hare.rich.75)
 summary(vaanCPcvhr.75)
 ```
 
-*Diagnostic plots*
-```{r 75-VAAN-CP-cv-only-diag, echo=TRUE,tidy=TRUE}
-# diagnostic plots using lindia package
-gg_diagnose(vaanCPcvhr.75, theme = theme_classic())
-```
+<!-- *Diagnostic plots* -->
+<!-- ```{r 75-VAAN-CP-cv-only-diag, echo=TRUE,tidy=TRUE} -->
+<!-- # diagnostic plots using lindia package -->
+<!-- gg_diagnose(vaanCPcvhr.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean + Weight
 ```{r 75-VAAN-CP-multi,echo=TRUE,tidy=TRUE}
@@ -1320,36 +1320,36 @@ summary(vaanCPhr.exp.75)
 confint(vaanCPhr.exp.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-VAAN-CP-multi-diag,echo=TRUE,tidy=TRUE}
-gg_diagnose(vaanCPhr.exp.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-VAAN-CP-multi-diag,echo=TRUE,tidy=TRUE} -->
+<!-- gg_diagnose(vaanCPhr.exp.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 <!-- *Data vs Predicted Plot* -->
-```{r 75-data-vs-pred-vaancp-2, eval=FALSE, include=FALSE, tidy=TRUE}
-# code from https://drsimonj.svbtle.com/visualising-residuals
+<!-- ```{r 75-data-vs-pred-vaancp-2, eval=FALSE, include=FALSE, tidy=TRUE} -->
+<!-- # code from https://drsimonj.svbtle.com/visualising-residuals -->
 
-hare.predplot <- augment(vaanCPhr.exp.75, se_fit = TRUE) %>% 
-  dplyr::select(-c(.se.fit, .hat:.std.resid)) %>% 
-  gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd)
+<!-- hare.predplot <- augment(vaanCPhr.exp.75, se_fit = TRUE) %>%  -->
+<!--   dplyr::select(-c(.se.fit, .hat:.std.resid)) %>%  -->
+<!--   gather(key ="Covariate", value = "Value", -HRsize, -.fitted, -.resid, -.sigma, -.cooksd) -->
 
-covariates_names <- c(
-  `VAAN_CP_mean` = "Average Blueberry C:P",
-  `WeightSSH_g` = "Snowshoe hare body weight (g)"
-)
+<!-- covariates_names <- c( -->
+<!--   `VAAN_CP_mean` = "Average Blueberry C:P", -->
+<!--   `WeightSSH_g` = "Snowshoe hare body weight (g)" -->
+<!-- ) -->
 
-ggplot(hare.predplot, aes(x = Value, y = HRsize)) +
-  geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) +
-  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) +
-  geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) +
-  geom_point(aes(y = .fitted), shape = 5) +
-  xlab("") +
-  ylab("Home Range size (ha) - 75% kUD") +
-  scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") +
-  guides(fill = FALSE, size = FALSE) +
-  facet_grid(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names)) + 
-  theme_few()
-```
+<!-- ggplot(hare.predplot, aes(x = Value, y = HRsize)) + -->
+<!--   geom_segment(aes(xend = Value, yend = .fitted), alpha = .2) + -->
+<!--   geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + -->
+<!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
+<!--   geom_point(aes(y = .fitted), shape = 5) + -->
+<!--   xlab("") + -->
+<!--   ylab("Home Range size (ha) - 75% kUD") + -->
+<!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
+<!--   guides(fill = FALSE, size = FALSE) + -->
+<!--   facet_grid(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names)) +  -->
+<!--   theme_few() -->
+<!-- ``` -->
 
 #### Coeff. Var. + Weight
 ```{r 75-VAAN-CP-multi-cv,echo=TRUE,tidy=TRUE}
@@ -1358,10 +1358,10 @@ vaanCPcv.exp.75 <- lm(HRsize ~ VAAN_CP_CVar + WeightSSH_g, data = hare.rich.75)
 summary(vaanCPcv.exp.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-VAAN-CP-multi-cv-diag,echo=TRUE,tidy=TRUE}
-gg_diagnose(vaanCPcv.exp.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-VAAN-CP-multi-cv-diag,echo=TRUE,tidy=TRUE} -->
+<!-- gg_diagnose(vaanCPcv.exp.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean + Coeff. Var.
 ```{r 75-plus-stoich-vaancp-1, echo=TRUE, tidy=TRUE}
@@ -1372,10 +1372,10 @@ summary(vaancp.plus.75)
 confint(vaancp.plus.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-p-vaancp-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(vaancp.plus.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-p-vaancp-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(vaancp.plus.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean * Coeff. Var.
 ```{r 75-joint-stoich-vaancp-2, echo=TRUE, tidy=TRUE}
@@ -1384,10 +1384,10 @@ vaancp.joint.75 <- lm(HRsize ~ VAAN_CP_mean*VAAN_CP_CVar, data = hare.rich.75)
 summary(vaancp.joint.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-js-vaancp-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(vaancp.joint.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-js-vaancp-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(vaancp.joint.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean + Coeff. Var. + Weight
 ```{r 75-stoich-weight-vaancp-1, echo=TRUE, tidy=TRUE}
@@ -1396,10 +1396,10 @@ vaancp.sw.75 <- lm(HRsize ~ VAAN_CP_mean+VAAN_CP_CVar+WeightSSH_g, data = hare.r
 summary(vaancp.sw.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-sw-vaancp-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(vaancp.sw.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-sw-vaancp-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(vaancp.sw.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### Mean * Coeff. Var. + Weight
 ```{r 75-jsw-stoich-vaancp-1, echo=TRUE, tidy=TRUE}
@@ -1408,10 +1408,10 @@ vaancp.jsw.75 <- lm(HRsize ~ VAAN_CP_mean*VAAN_CP_CVar+WeightSSH_g, data = hare.
 summary(vaancp.jsw.75)
 ```
 
-*Diagnostic Plots*
-```{r 75-jsw-vaancp-diag, echo=TRUE, tidy=TRUE}
-gg_diagnose(vaancp.jsw.75, theme = theme_classic())
-```
+<!-- *Diagnostic Plots* -->
+<!-- ```{r 75-jsw-vaancp-diag, echo=TRUE, tidy=TRUE} -->
+<!-- gg_diagnose(vaancp.jsw.75, theme = theme_classic()) -->
+<!-- ``` -->
 
 #### AICc Table
 ```{r 75-vaancp-aicc-tab, echo=TRUE, tidy=TRUE}

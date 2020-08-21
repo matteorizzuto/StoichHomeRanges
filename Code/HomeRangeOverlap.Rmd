@@ -95,7 +95,7 @@ A1425_olap_df$EarTag <- "A1425"
 Now, let's visualize the overlap. The code below produces figure S3 in the 
 Supplementary Information; as such, we only provide the code top produce it here.
 
-```{r overlap-A1425-fig, echo=TRUE, tidy=TRUE}
+```{r overlap-A1425-fig, echo=TRUE, tidy=TRUE, message=FALSE}
 # extract the UD contours at 50%, 75%, and 90% isopleths
 A1425.50 <- lapply(1:length(A1425_uds), function(x) SpatialPolygonsDataFrame.UD(A1425_uds[[x]], level.UD=0.50, level = 0.95))
 
@@ -213,7 +213,7 @@ A1698_olap_df$EarTag <- "A1698"
 Now, let's visualize the overlap. The code below produces figure S3 in the 
 Supplementary Information; as such, we only provide the code top produce it here.
 
-```{r overlap-A1698-fig, echo=TRUE, tidy=TRUE}
+```{r overlap-A1698-fig, echo=TRUE, tidy=TRUE, message=FALSE}
 # extract the UD contours at 50%, 75%, and 90% isopleths
 A1698.50 <- lapply(1:length(A1698_uds), function(x) SpatialPolygonsDataFrame.UD(A1698_uds[[x]], level.UD=0.50, level = 0.95))
 
@@ -331,7 +331,7 @@ A3719_olap_df$EarTag <- "A3719"
 Now, let's visualize the overlap. The code below produces figure S3 in the 
 Supplementary Information; as such, we only provide the code top produce it here.
 
-```{r overlap-A3719-fig, echo=TRUE, tidy=TRUE}
+```{r overlap-A3719-fig, echo=TRUE, tidy=TRUE, message=FALSE}
 # extract the UD contours at 50%, 75%, and 90% isopleths
 A3719.50 <- lapply(1:length(A3719_uds), function(x) SpatialPolygonsDataFrame.UD(A3719_uds[[x]], level.UD=0.50, level = 0.95))
 
@@ -451,7 +451,7 @@ A3769_olap_df$EarTag <- "A3769"
 Now, let's visualize the overlap. The code below produces figure S3 in the 
 Supplementary Information; as such, we only provide the code top produce it here.
 
-```{r overlap-A3769-fig, echo=TRUE, tidy=TRUE}
+```{r overlap-A3769-fig, echo=TRUE, tidy=TRUE, message=FALSE}
 # extract the UD contours at 50%, 75%, and 90% isopleths
 A3769.50 <- lapply(1:length(A3769_uds), function(x) SpatialPolygonsDataFrame.UD(A3769_uds[[x]], level.UD=0.50, level = 0.95))
 
@@ -550,7 +550,7 @@ The code chunk produces Table S3 in the Supplementary Information. As in other
 such cases, we provide here only the code to produce the table and refer readers
 to the SI to see the output.
 
-```{r olap-table, tidy=TRUE, results='hide'}
+```{r olap-table, tidy=TRUE, results='hide', message=FALSE}
 olap <- dplyr::full_join(A1425_olap_df,A1698_olap_df) %>% dplyr::full_join(., A3719_olap_df) %>% dplyr::full_join(., A3769_olap_df) %>% dplyr::rename(., `Bhattacharyya Index` = est)
 
 kable(olap[, 1:3]) %>%  group_rows(index = setNames(rle(olap$EarTag)[[1]], 

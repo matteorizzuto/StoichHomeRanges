@@ -270,9 +270,9 @@ location using an Azimuthal Telemetry Model (ATM; @Gerber2018). The ATM uses a
 Markov Chain Monte Carlo algorithm to iteratively estimate the location of a 
 collar based on the azimuthal data over multiple time step. 
 
-> **Note**: This step can be *quite* time consuming and computationally 
+> **Note**: This step can be time consuming and computationally 
 intensive. On a machine with a Quad-Core Intel Core i7 2.5 GHz with 16 Gb RAM, 
-it took about **XXX hours**. Please, allocate as much or more time to complete 
+it took about **20 minutes**. Please, allocate as much or more time to complete 
 running or compiling this code chunk, depending on your hardware configuration. 
 
 > We provide a pre-generated `.rds` file to load in your R code if you do not 
@@ -280,7 +280,7 @@ want or cannot run this portion of the code. The pre-generated file can be
 found here: 
 `../Results/razimuth_errorT_lsfits.rds`
 
-```{r error-atm-fit, echo=TRUE, tidy=TRUE}
+```{r error-atm-fit, echo=TRUE, tidy=TRUE, results='hide'}
 tictoc::tic() # start timing how long it will take to run
 # Model all
 erlsfits <- lapply(erlsatms, atm_mcmc, n_mcmc = 10000, n_burn = 1000)
@@ -312,6 +312,7 @@ we are going to save them in a dedicate folder, `Post_Triangd`, under `Results`.
 
 ```{r error-trials-atm-error-vis, echo=TRUE, tidy=TRUE, message=FALSE, results="hide"}
 # Visualize all with error
+# 
 lapply(seq_along(erlsatms), function(x) {
   mypath <- file.path("..","Results", "Error_Triangd",paste("error_post_triangulation_", names(erlsatms)[[x]],
                                                            ".pdf", sep = ""))
@@ -335,28 +336,33 @@ values of the parameter kappa over each iteration. We can do this in two ways:
 either in a traceplot, which shows the variation in the value of kappa, or as a 
 running mean, which show the change in the mean value of kappa over each 
 iteration. First, let's look at the traceplot for kappa. Here, we are looking for
-a plot in which the peaks and pits are, in general, about the same width.
+a plot in which the peaks and pits are, in general, about the same width. 
+We save the resulting graphs in folder `Results` as a single file named 
+`error_traceplot.pdf`.
 
 ``` {r error-kappa-convergence-check-1, echo=TRUE, tidy=TRUE}
 # check convergence ----
-# pdf('graphics/traceplot.pdf')
+# pdf('../Results/error_traceplot.pdf')
+par(mar = c(2,2,2,2), mfrow = c(5,3))
 lapply(seq_along(erlsfits), function(x) {
-  plot.new()
-  mtext(names(erlsfits)[[x]])
+  # plot.new()
   plot_kappa(atm_obj = erlsfits[[x]]$kappa_ls, item = "traceplot")
+  mtext(names(erlsfits)[[x]], line = 0.5)
 })
 # dev.off()
 ```
 
 And here we plot the running mean of kappa. In this case, we are looking for 
-a line that eventually flattens out. 
+a line that eventually flattens out. We save the resulting graphs in folder 
+`Results` as a single file named `error_runmean.pdf`.
 
 ```{R error-kappa-convergence-check-2, echo=TRUE, tidy=TRUE}
-# pdf('graphics/runmean.pdf')
+# pdf('../Results/error_runmean.pdf')
+par(mar = c(2,2,2,2), mfrow = c(5,3))
 lapply(seq_along(erlsfits), function(x) {
-  plot.new()
-  mtext(names(erlsfits)[[x]])
+  # plot.new()
   plot_kappa(atm_obj = erlsfits[[x]]$kappa_ls, item = "run_mean")
+  mtext(names(erlsfits)[[x]], line = 0.5)
 })
 # dev.off()
 ```
