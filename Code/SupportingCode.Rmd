@@ -38,8 +38,8 @@ output:
 fontsize: 11pt
 geometry: margin=1in
 documentclass: article    
-bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
-csl: ../Manuscripts/ecology.csl
+bibliography: ../bibliography.bib
+csl: ../oikos.csl
 editor_options: 
   chunk_output_type: inline
 header-includes:
