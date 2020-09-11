@@ -762,7 +762,7 @@ rsqdf.75$Modnames <- as_factor(rsqdf.75$Modnames)
 vaanCNaicRsq.75 <- vaanCN_aicctab.75 %>% merge(., rsqdf.75) %>% arrange(., Delta_AICc)  
 
 # Generate publication quality AIC table
-gt(vaanCNaicRsq.75) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Blueberry C:N - 75% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+gt(vaanCNaicRsq.75) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Blueberry C:N - 75% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>")) 
 ```
 
 
@@ -1043,7 +1043,7 @@ rsqdf.75$Modnames <- as_factor(rsqdf.75$Modnames)
 acruNPaicRsq.75 <- acruNP_aicctab.75 %>% merge(., rsqdf.75) %>% arrange(., Delta_AICc)  
 
 # Generate publication quality AIC table
-gt(acruNPaicRsq.75) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Red Maple N:P - 75% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+gt(acruNPaicRsq.75) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Red Maple N:P - 75% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>")) 
 ```
 
 ### Blueberry N:P  {.tabset .tabset-fade .tabset-pills}

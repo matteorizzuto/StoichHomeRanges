@@ -128,7 +128,7 @@ outliers using a custom generated function, `plotOutliers`, and the output of
 `outlie`. `plotOutliers` was developed by @Droghini2020 and it produces a quick 
 plot to visualize outliers.
 
-```{r individual-outliers-check, echo=TRUE, tidy=TRUE}
+```{r individual-outliers-check, echo=TRUE, tidy=TRUE, fig.height=3, fig.width=3, fig.asp=1}
 # looks like generally high speeds are related to far distances
 # less worried about speed because there is a minimum of 15 hours
 # between relocs (usually more than that)
@@ -264,7 +264,7 @@ Collar Frequency  Long. outliers  Cutoff Longitude  Lat. outliers  Cutoff Latitu
 First, let's temporarily remove them and check visually how the new maps would 
 look like without them.
 
-```{r individual-outliers-test-removal, echo=TRUE, tidy=TRUE, message=FALSE}
+```{r individual-outliers-test-removal, echo=TRUE, tidy=TRUE, message=FALSE, fig.height=3, fig.width=3, fig.asp=1}
 par(mar=c(2,2,2,2), mfrow=c(6,6))
 # 149.053
 subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.053") %>% dplyr::filter(., location.lat > (48.348)) %>% dplyr::filter(., location.lat < (48.352)) # removing 1 points past 48.348 and 1 point past 48.352
@@ -398,7 +398,7 @@ sizes like ours [@Fleming2019].
 > **Note**: the code chunk below can take a while to run. On a machine with a
 Quad-Core Intel Core i7 2.5 GHz with 16 Gb RAM, it took about 30 minutes.
 
-```{r ctmm-fit, echo=TRUE, tidy=TRUE, message=FALSE, warning=FALSE}
+```{r ctmm-fit, eval=FALSE, tidy=TRUE, message=FALSE, warning=FALSE}
 tictoc::tic() # start timing 
 hares.fit.e <- lapply(1:length(hares.telem.clean), 
                       function(i) ctmm.select(data=hares.telem.clean[[i]],
@@ -411,7 +411,7 @@ tictoc::toc() # return total run time
 As this is, again a fairly large output, we are going to save it into a `.rds`
 file for ease of access in later analyses. 
 
-```{r ctmm-fit-save, echo=TRUE, tidy=TRUE}
+```{r ctmm-fit-save, eval=FALSE, tidy=TRUE}
 saveRDS(hares.fit.e, "../Results/haresfitraz.rds")
 ```
 

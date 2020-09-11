@@ -280,7 +280,7 @@ want or cannot run this portion of the code. The pre-generated file can be
 found here: 
 `../Results/razimuth_errorT_lsfits.rds`
 
-```{r error-atm-fit, echo=TRUE, tidy=TRUE, results='hide'}
+```{r error-atm-fit, eval=FALSE, tidy=TRUE, results='hide'}
 tictoc::tic() # start timing how long it will take to run
 # Model all
 erlsfits <- lapply(erlsatms, atm_mcmc, n_mcmc = 10000, n_burn = 1000)
@@ -290,7 +290,7 @@ tictoc::toc() # return total run time
 Given the extremely long runtime of the above code chunk, saving its output is a
 good idea to save time in future iterations of this notebook.
 
-```{r error-atm-fits-save, echo=TRUE, tidy=TRUE, message=FALSE, results="hide"}
+```{r error-atm-fits-save, eval=FALSE, tidy=TRUE, message=FALSE, results="hide"}
 # save the resulting model fits as and .rds object
 # this step allows us to not run the whole code each time, instead
 # skipping ahead of the most computational intensive part

@@ -611,7 +611,7 @@ gt(acruCNaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>%
   cols_label(Modnames ="Models formula", K = "K", AICc = "AICc",
              Delta_AICc = html("&Delta; AICc"), ModelLik ="Model Likelihood",
              AICcWt = "AICc Weight", LL ="Log-Lik",
-             Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>")) 
+             Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
 ```
 
 ### Blueberry C:N  {.tabset .tabset-fade .tabset-pills}
@@ -1200,9 +1200,9 @@ acruNPaicRsq <- acruNP_aicctab %>% merge(., rsqdf) %>% arrange(., Delta_AICc)
 gt(acruNPaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
   tab_header("Model Selection for Red Maple N:P") %>% 
     cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", 
-             Delta_AICc = "Delta AICc", ModelLik ="Model Likelihood", 
+             Delta_AICc = html("&Delta; AICc"), ModelLik ="Model Likelihood", 
              AICcWt = "AICc Weight", LL ="Log-Lik", 
-             Cum.Wt = "Cumulative Weight", Rsq = "R sq.")
+             Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
 ```
 
 
@@ -1449,9 +1449,9 @@ vaanNPaicRsq <- vaanNP_aicctab %>% merge(., rsqdf) %>% arrange(., Delta_AICc)
 gt(vaanNPaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
   tab_header("Model Selection for Blueberry N:P") %>% 
     cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", 
-             Delta_AICc = "Delta AICc", ModelLik ="Model Likelihood", 
+             Delta_AICc = html("&Delta; AICc"), ModelLik ="Model Likelihood", 
              AICcWt = "AICc Weight", LL ="Log-Lik", 
-             Cum.Wt = "Cumulative Weight", Rsq = "R sq.")
+             Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
 ```
 
 
@@ -1698,9 +1698,9 @@ vaanCPaicRsq <- vaanCP_aicctab %>% merge(., rsqdf) %>% arrange(., Delta_AICc)
 gt(vaanCPaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
   tab_header("Model Selection for Blueberry C:P") %>% 
     cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", 
-             Delta_AICc = "Delta AICc", ModelLik ="Model Likelihood", 
+             Delta_AICc = html("&Delta; AICc"), ModelLik ="Model Likelihood", 
              AICcWt = "AICc Weight", LL ="Log-Lik", 
-             Cum.Wt = "Cumulative Weight", Rsq = "R sq.")
+             Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
 ```
 
 ### Table summary of AICc top models
@@ -1755,7 +1755,7 @@ Model group               Uninformative Parameters
 -------------------       --------------------------------
 Blueberry C:N ratio       Body Weight, Mean-CV interaction
 Blueberry N:P ratio       None
-BLueberry C:P ratio       Body Weight
+Blueberry C:P ratio       Body Weight
 Red maple N:P ratio       Mean, Body Weight
 Red maple C:N ratio       None
 
