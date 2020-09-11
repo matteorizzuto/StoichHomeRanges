@@ -22,8 +22,6 @@ output:
     fig_height: 8
     df_print: paged
     toc_depth: 2
-    includes:
-  after_body: footer.html
   pdf_document:
     citation_package: biblatex
     dev: pdf
