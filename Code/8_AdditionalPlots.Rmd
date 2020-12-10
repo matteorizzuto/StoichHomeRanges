@@ -27,8 +27,8 @@ output:
 fontsize: 11pt
 geometry: margin=1in
 documentclass: article    
-bibliography: ../bibliography.bib
-csl: ../oikos.csl
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/functional-ecology.csl
 editor_options: 
   chunk_output_type: inline
 ---
@@ -127,8 +127,8 @@ vis1 <- ggplot(hare.stoich, aes(x = VAAN_CN_mean, y = VAAN_CN_CVar)) +
 ```{r fig2-plots, echo=TRUE, tidy=TRUE}
 # Blueberry Mean C:N - 50% kUD
 vis2_50kUD <- ggplot(hare.stoich, aes(x = VAAN_CN_mean, y = HRsize)) + 
-  geom_smooth(data = fortify(vaanCNhr), method = "lm", color = "grey", alpha = 0.15) + 
-  geom_point(aes(fill = EarTag, shape = EarTag), size = 5) +
+  geom_smooth(data = fortify(vaanCNhr), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
+  geom_point(aes(fill = EarTag, shape = EarTag), size = 8) +
   scale_fill_manual(name= "Ear tag", 
                     values = pair_colors) +
   scale_shape_manual(name = "Ear tag", 
@@ -140,8 +140,8 @@ vis2_50kUD <- ggplot(hare.stoich, aes(x = VAAN_CN_mean, y = HRsize)) +
 
 # Blueberry Mean C:N - 75% kUD
 vis2_75kUD <- ggplot(hare.stoich.75, aes(x = VAAN_CN_mean, y = HRsize)) + 
-  geom_smooth(data = fortify(vaanCNhr.75), method = "lm", color = "grey", alpha = 0.15) + 
-  geom_point(aes(fill = EarTag, shape = EarTag), size = 5) +
+  geom_smooth(data = fortify(vaanCNhr.75), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
+  geom_point(aes(fill = EarTag, shape = EarTag), size = 8) +
   scale_fill_manual(name= "Ear tag", 
                     values = pair_colors) +
   scale_shape_manual(name = "Ear tag", 
@@ -153,8 +153,8 @@ vis2_75kUD <- ggplot(hare.stoich.75, aes(x = VAAN_CN_mean, y = HRsize)) +
 
 # Blueberry Mean C:N - 90% kUD
 vis2_90kUD <- ggplot(hare.stoich.90, aes(x = VAAN_CN_mean, y = HRsize)) + 
-  geom_smooth(data = fortify(vaanCNhr.90), method = "lm", color = "grey", alpha = 0.15) + 
-  geom_point(aes(fill = EarTag, shape = EarTag), size = 5) +
+  geom_smooth(data = fortify(vaanCNhr.90), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
+  geom_point(aes(fill = EarTag, shape = EarTag), size = 8) +
   scale_fill_manual(name= "Ear tag", 
                     values = pair_colors) +
   scale_shape_manual(name = "Ear tag", 
@@ -171,8 +171,8 @@ vis2all <- vis2_50kUD + vis2_75kUD + vis2_90kUD + plot_layout(ncol = 3, nrow = 1
 
 # Blueberry C:N Coefficient of Variation - 50% kUD
 vis3_50kUD <- ggplot(hare.stoich, aes(x = VAAN_CN_CVar, y = HRsize)) + 
-  geom_smooth(data = fortify(vaanCNcvhr), method = "lm", color = "grey", alpha = 0.15) + 
-  geom_point(aes(fill = EarTag, shape = EarTag), size = 5) + 
+  geom_smooth(data = fortify(vaanCNcvhr), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
+  geom_point(aes(fill = EarTag, shape = EarTag), size = 8) + 
   scale_fill_manual(name= "Ear tag", 
                     values = pair_colors) +
   scale_shape_manual(name = "Ear tag", 
@@ -184,8 +184,8 @@ vis3_50kUD <- ggplot(hare.stoich, aes(x = VAAN_CN_CVar, y = HRsize)) +
 
 # Blueberry C:N Coefficient of Variation - 75% kUD
 vis3_75kUD <- ggplot(hare.stoich.75, aes(x = VAAN_CN_CVar, y = HRsize)) + 
-  geom_smooth(data = fortify(vaanCNcvhr.75), method = "lm", color = "grey", alpha = 0.15) + 
-  geom_point(aes(fill = EarTag, shape = EarTag), size = 5) + 
+  geom_smooth(data = fortify(vaanCNcvhr.75), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
+  geom_point(aes(fill = EarTag, shape = EarTag), size = 8) + 
   scale_fill_manual(name= "Ear tag", 
                     values = pair_colors) +
   scale_shape_manual(name = "Ear tag", 
@@ -197,8 +197,8 @@ vis3_75kUD <- ggplot(hare.stoich.75, aes(x = VAAN_CN_CVar, y = HRsize)) +
 
 # Blueberry C:N Coefficient of Variation - 90% kUD
 vis3_90kUD <- ggplot(hare.stoich.90, aes(x = VAAN_CN_CVar, y = HRsize)) + 
-  geom_smooth(data = fortify(vaanCNcvhr.90), method = "lm", color = "grey", alpha = 0.15) + 
-  geom_point(aes(fill = EarTag, shape = EarTag), size = 5) + 
+  geom_smooth(data = fortify(vaanCNcvhr.90), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
+  geom_point(aes(fill = EarTag, shape = EarTag), size = 8) + 
   scale_fill_manual(name= "Ear tag", 
                     values = pair_colors) +
   scale_shape_manual(name = "Ear tag", 
@@ -215,7 +215,7 @@ vis3all <- vis3_50kUD + vis3_75kUD + vis3_90kUD + plot_layout(ncol = 5, nrow = 1
 
 # now, to create Figure 2 in the ms, arrange all six plots just produced into a
 # 2 rows by 3 columns figure
-visall <- vis2_50kUD + vis2_75kUD + vis2_90kUD + vis3_50kUD + vis3_75kUD + vis3_90kUD + plot_layout(ncol = 3, nrow = 2, guides = "collect") + plot_annotation(tag_levels = "a", tag_prefix = "(", tag_suffix = ")")
+visall <- (vis2_50kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis2_75kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis2_90kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis3_50kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis3_75kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis3_90kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + plot_layout(ncol = 3, nrow = 2, guides = "collect", widths = c(1.5, 1.5, 1.5)) + plot_annotation(tag_levels = "a", tag_prefix = "(", tag_suffix = ")")
 
 # save it
 ggsave(visall, filename = "../Results/VAAN_HRvsCN.pdf", device = "pdf", dpi = 600, width = 25, height = 15)
@@ -420,6 +420,170 @@ ggplot(hare.stoich, aes(VAAN_CP_mean, y = VAAN_CP_CVar)) +
   xlab("Average") + 
   ylab("Coefficient of Variation") + 
   theme_classic() 
+```
+
+## Literature Review -- Elemental and Nutritional Content of Food
+
+In our study, we use Nitrogen (N) as our main indicator of food quality --- 
+alongside Phosphorus. However, not all N contained in a plant is available for 
+consumers to be assimilated in their own biomass. Some of it may be locked in 
+structural compounds that pass through the digestive tract of animals, and thus
+it may get egested. As we do not have macromolecular data on the two fractions 
+-- available and unavailable -- of N present in our plant SOIs, we turned to the 
+literature. We collected data from studies included in two recent reviews 
+[@Felton2018; @Champagne2020] of the influence different elements and 
+macromolecular compounds have on diet selection of two groups of herbivores, 
+Cervids and Leporids. 
+
+We selected studies from the @Felton2018 and @Champagne2020 publicly available 
+datasets based on whether they measured N in plant samples. We then collected 
+data on their elemental, macromolecular, and phytochemical composition, by 
+extracting it from tables and figures. This produced the dataset shown below.
+
+```{r nvmn_dataload, echo=TRUE, tidy=TRUE}
+stoichMNrev <- read.csv("../Data/StoichMN_Review.csv")
+
+# set categorical variables as factors
+stoichMNrev$ID <- as.factor(stoichMNrev$ID)
+stoichMNrev$PhenUnits <- as.factor(stoichMNrev$PhenUnits)
+stoichMNrev$StoichUnits <- as.factor(stoichMNrev$StoichUnits)
+stoichMNrev$MnUnits <- as.factor(stoichMNrev$MnUnits)
+
+kable(head(stoichMNrev)) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                fixed_thead = TRUE) %>% 
+  scroll_box(width = "100%", height = "500px")
+```
+
+We then further refined our dataset to include only those studies recording data
+in either % dry matter/mass or % dry weight. 
+
+```{r nvm_clean1, echo=TRUE, tidy=TRUE}
+drymassRev <- filter(stoichMNrev, MnUnits == "% dry mass" | MnUnits == "% dry matter" | MnUnits == "% dry weight") 
+
+kable(head(drymassRev)) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                fixed_thead = TRUE) %>% 
+  scroll_box(width = "100%", height = "500px")
+```
+
+Finally, as studies consistently reported only N or Protein content data -- since
+the latter is routinely estimated using the 6.25 conversion factor 
+[@Jones1931; @Mariotti2008] -- we subset the dry-mass-only dataset to include
+only N-reporting studies.
+
+```{r nvmn_clean2, echo = TRUE, tidy = TRUE}
+onlyN <- drymassRev[complete.cases(drymassRev[, 7]),]
+onlyN <- droplevels(onlyN)
+
+kable(head(onlyN)) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                fixed_thead = TRUE) %>% 
+  scroll_box(width = "100%", height = "500px")
+```
+
+Now, we visually inspect the relationship between N content and the content of 
+six C-based structural and non-structural macromolecules: Cellulose, 
+Hemicellulose, Lignin, Neutral Detergent Fiber, Acid Detergent Fiber, and 
+Total Non-Structural Carbohydrates. 
+
+**Note:** The code below produces Figure S8 in the Supporting Information
+document, hence we report here only the code to produce it. 
+
+```{r nvmn_analyses, echo=TRUE, message=FALSE, warning=FALSE, tidy=TRUE, fig.show='hide'}
+# create the formula object to use to print the OLS regression equation on the 
+# plots using stat_poly_eq()
+myformula <- y ~ x
+
+# create palette for factors with large number of levels
+colourCount = length(unique(onlyN$ID))
+getPalette = colorRampPalette(brewer.pal(14, "Set3"))
+
+# NDF
+mn1 <- ggplot(onlyN, aes(x = N, y = NDF)) + 
+  geom_smooth(method = "lm", colour = "black") + 
+  geom_point(aes(fill = ID), shape = 21, size = 4) + 
+  scale_fill_manual(values = getPalette(colourCount)) + 
+  stat_poly_eq(formula = myformula, 
+               aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+               parse = TRUE, hjust = -.7) + 
+  xlab("Nitrogen Content (% dry matter)") + 
+  ylab("Neutral Detergent Fiber (% dry matter)") + 
+  theme_classic() + 
+  theme(panel.grid.major.y = element_line(colour = "gray", linetype = "dotted"))
+
+# ADF
+mn2 <- ggplot(onlyN, aes(x = N, y = ADF)) + 
+  geom_smooth(method = "lm", colour = "black") + 
+  geom_point(aes(fill = ID), shape = 21, size = 4) + 
+  scale_fill_manual(values = getPalette(colourCount)) + 
+  stat_poly_eq(formula = myformula, 
+               aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+               parse = TRUE, hjust = -.7) + 
+  xlab("Nitrogen Content (% dry matter)") + 
+  ylab("Acid Detergent Fiber (% dry matter)") + 
+  theme_classic() + 
+  theme(panel.grid.major.y = element_line(colour = "gray", linetype = "dotted"))
+
+# Lignin
+mn3 <- ggplot(onlyN, aes(x = N, y = Lignin)) + 
+  geom_smooth(method = "lm", colour = "black") + 
+  geom_point(aes(fill = ID), shape = 21, size = 4) + 
+  scale_fill_manual(values = getPalette(colourCount)) + 
+  stat_poly_eq(formula = myformula, 
+               aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+               parse = TRUE, hjust = -.7) + 
+  xlab("Nitrogen Content (% dry matter)") + 
+  ylab("Lignin (% dry matter)") + 
+  theme_classic() + 
+  theme(panel.grid.major.y = element_line(colour = "gray", linetype = "dotted"))
+
+# Carbohydrates
+mn4 <- ggplot(onlyN, aes(x = N, y = Carbohydrate)) + 
+  geom_smooth(method = "lm", colour = "black") + 
+  geom_point(aes(fill = ID), shape = 21, size = 4) + 
+  scale_fill_manual(values = getPalette(colourCount)) + 
+  stat_poly_eq(formula = myformula, 
+               aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+               parse = TRUE, hjust = -.7) + 
+  xlab("Nitrogen Content (% dry matter)") + 
+  ylab("Total Non-Structural Carbohydrate (% dry matter)") + 
+  theme_classic() + 
+  theme(panel.grid.major.y = element_line(colour = "gray", linetype = "dotted"))
+
+# Cellulose
+mn5 <- ggplot(onlyN, aes(x = N, y = Cellulose)) + 
+  geom_smooth(method = "lm", colour = "black") + 
+  geom_point(aes(fill = ID), shape = 21, size = 4) + 
+  scale_fill_manual(values = getPalette(colourCount)) + 
+  stat_poly_eq(formula = myformula, 
+               aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+               parse = TRUE, hjust = -.7) + 
+  xlab("Nitrogen Content (% dry matter)") + 
+  ylab("Cellulose (% dry matter)") + 
+  theme_classic() + 
+  theme(panel.grid.major.y = element_line(colour = "gray", linetype = "dotted"))
+
+# Hemicellulose
+mn6 <- ggplot(onlyN, aes(x = N, y = Hemicellulose)) + 
+  geom_smooth(method = "lm", colour = "black") + 
+  geom_point(aes(fill = ID), shape = 21, size = 4) + 
+  scale_fill_manual(values = getPalette(colourCount)) + 
+  stat_poly_eq(formula = myformula, 
+               aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+               parse = TRUE, hjust = -.7) + 
+  xlab("Nitrogen Content (% dry matter)") + 
+  ylab("Hemicellulose (% dry matter)") + 
+  theme_classic() + 
+  theme(panel.grid.major.y = element_line(colour = "gray", linetype = "dotted"))
+
+# Combine them all together
+mn1 + mn2 + mn3 + mn4 +  mn5 + mn6 + plot_layout(ncol = 3, nrow = 2, 
+                                                 guides = "collect") + 
+  plot_annotation(tag_levels = "a", tag_prefix = "(", tag_suffix = ")")
+
+# save it
+ggsave("../Results/NvsMNuts.pdf", device = 'pdf', dpi = 600, width = 14, height = 8)
 ```
 
 ## Overlap vs stoich
