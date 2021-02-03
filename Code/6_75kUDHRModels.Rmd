@@ -140,7 +140,7 @@ hares.HR75 <- hr_seventyfive[, c(1,3)] %>%
   dplyr::rename(., CollarFrequency = frequency, HRsize = seventyfive)
 
 # merge the demographic and kUD dataframes, then reorder the variables more 
-# logically, and finalle break variable "Date" into its three components
+# logically, and finally break variable "Date" into its three components
 # "Year", "Month", and "Day". "Year" will be important in later modelling. 
 hareData75 <- merge(hareDemData, hares.HR75, by = "CollarFrequency") %>% 
   dplyr::select("CollarFrequency", "EarTag", "SiteName":"SamplingYear",
@@ -876,7 +876,7 @@ summary(acruNPhr.exp.75)
 <!--   geom_point(aes(fill = .resid, size = abs(.resid)), shape = 21) + -->
 <!--   geom_point(aes(y = .fitted), shape = 5) + -->
 <!--   xlab("") + -->
-<!--   ylab("Home Range size (ha) - 75% kZUD") + -->
+<!--   ylab("Home Range size (ha) - 75% kUD") + -->
 <!--   scale_fill_gradient2(low = "#8e0152", mid = "#f7f7f7", high = "#276419") + -->
 <!--   guides(fill = FALSE, size = FALSE) + -->
 <!--   facet_wrap(~ Covariate, scales = "free_x", labeller = as_labeller(covariates_names), strip.position = "bottom") +  -->
@@ -1039,7 +1039,7 @@ rsqdf.75 <- enframe(rsq.75, name = "Modnames", value = "Rsq") %>% unnest(cols = 
 
 rsqdf.75$Modnames <- as_factor(rsqdf.75$Modnames)
 
-# save the now complete AIC table as new objec
+# save the now complete AIC table as new object
 acruNPaicRsq.75 <- acruNP_aicctab.75 %>% merge(., rsqdf.75) %>% arrange(., Delta_AICc)  
 
 # Generate publication quality AIC table

@@ -98,7 +98,7 @@ average quality of resources and/or to their variability.
 
 <!-- This can happen in two different, but related, ways: -->
 <!-- 1. variation in the home range size of different individuals -->
-<!--     * this is related to the individuals having an easier/tougher time finding the resources they need to satisfy their elemental dietary requirements based on the spatial distribution of the plant content of those elemenets -->
+<!--     * this is related to the individuals having an easier/tougher time finding the resources they need to satisfy their elemental dietary requirements based on the spatial distribution of the plant content of those elements -->
 <!-- 2. variation in an individual's preferences for areas of different stoichiometries -->
 <!--     * as Juliana's work has shown, and [@Leroux2017] hinted at, individuals may make decisions in terms of quality or quantity of the food they eat, which in turn transfer to their space use decisions -->
 
@@ -370,7 +370,7 @@ they were collected: for individuals with 2 or more years of data collection, we
 include only the home range size estimate obtained from the year closer to the 
 plant sampling.
 
-```{r year-models-2, echp=TRUE, message=FALSE, warning=FALSE, tidy=TRUE}
+```{r year-models-2, echo=TRUE, message=FALSE, warning=FALSE, tidy=TRUE}
 # remove home range estimates and stoich data from home range estimates further away from 2016, for pseudoreplicated individuals
 hare.year <- subset(hare.stoich, hare.stoich$CollarFrequency != "150.173" & 
                       hare.stoich$CollarFrequency != "149.294" & 
@@ -405,7 +405,7 @@ variation, i.e. the SD:mean ratio.
 **Note**: To improve readability and keeping this document to a manageable 
 length, we organized the following sections as tabsets. Each tab contains the
 code to run the model named in the tab header and visualize its summary and 
-diagnotic plots. For the top-ranked models in the AICc table at the bottom of this section, we additionally present a graph
+diagnostic plots. For the top-ranked models in the AICc table at the bottom of this section, we additionally present a graph
 showing the difference between the observed home range size and that
 predicted by the model.
 

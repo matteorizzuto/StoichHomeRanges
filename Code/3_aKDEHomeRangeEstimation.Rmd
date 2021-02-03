@@ -141,7 +141,7 @@ subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.003")
 plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any
 # 149.053
 subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.053")
-plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # removing 1 point past 48.348 and 1 pont past 48.352
+plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # removing 1 point past 48.348 and 1 point past 48.352
 # 149.093
 subsetOutlier <- subset(hares.locs, tag.local.identifier == "149.093")
 plotOutliers(subsetOutlier, 1, nrow(subsetOutlier)) # not removing any
@@ -327,7 +327,7 @@ hares.Clean <- hares.locs %>%
   ))
 # 18 total outliers removed 
 # save this as the cleaned version 
-write.csv(hares.Clean, "../Results/haresLocsClean.csv")
+# write.csv(hares.Clean, "../Results/haresLocsClean.csv")
 
 # convert to telemetry object to use going forward
 hares.telem.clean <- as.telemetry(hares.Clean, keep = TRUE, projection="+init=epsg:32622")
@@ -457,13 +457,13 @@ topModels.e <- distinct(modelSummary.e,.id, .keep_all=TRUE)
 topModels.e
 
 # save both the overall model summary dataframe and the top models one
-write_csv(modelSummary.e,"../Results/haresmodelsummary.e.csv")
-write_csv(topModels.e,"../Results/harestopmodels.e.csv")
+# write_csv(modelSummary.e,"../Results/haresmodelsummary.e.csv")
+# write_csv(topModels.e,"../Results/harestopmodels.e.csv")
 # DOF is large enough (over 4-5) for all individuals 
 
 # save final telemetry and fit objects
-saveRDS(hares.telem.clean, "../Results/harestelemclean_final.rds")
-saveRDS(hares.fit.e, "../Results/haresfite_final.rds")
+# saveRDS(hares.telem.clean, "../Results/harestelemclean_final.rds")
+# saveRDS(hares.fit.e, "../Results/haresfite_final.rds")
 ```
 
 ## Reasses the Variograms
@@ -516,7 +516,7 @@ finalMods <- lapply(1:length(hares.fit.e),
                     function(i) hares.fit.e[[i]][1][[1]]) 
 names(finalMods) <- finalNames
 # save final models 
-saveRDS(finalMods, "../Results/finalmodelse.rds")
+# saveRDS(finalMods, "../Results/finalmodelse.rds")
 ```
 
 ## Producing the aKDE
@@ -574,7 +574,7 @@ Now, let's calculate the home ranges. We are going to set the argument
 estimate the area of the home range. This step of the estimation uses the AKDEc 
 method [@Fleming2019].
 
-```{r akde-estimation, echo=TRUE, tidy=TRUE}
+```{r akde-estimation, eval=FALSE, tidy=TRUE}
 # calculate home ranges
 # debias = TRUE debiases the distribution for area estimation (AKDEc, Fleming et al., 2019)
 homeRanges <- akde(data=hares.telem.clean, debias=TRUE, CTMM=finalMods, grid=ee)
@@ -582,9 +582,14 @@ homeRanges <- akde(data=hares.telem.clean, debias=TRUE, CTMM=finalMods, grid=ee)
 
 Let's save this large `homeRanges` object as an `.rds` file for ease of access.
 
-```{r akde-save, echo=TRUE, tidy=TRUE}
+```{r akde-save, eval=FALSE, tidy=TRUE}
 # export homeRanges
-saveRDS(homeRanges, "../Results/akdehomeranges.rds")
+# saveRDS(homeRanges, "../Results/akdehomeranges.rds")
+```
+
+Let's load the file we just saved.
+
+```{r akde-load, echo=TRUE, tidy=TRUE}
 homeRanges <- readRDS("../Results/akdehomeranges.rds")
 ```
 
@@ -701,12 +706,12 @@ names(fifty) <- names(homeRanges)
 
 Now that we have home range size estimates at the 50%, 75%, and 90% isopleths,
 we can overlay these on top of our Stoichiometric Distribution Models rasters 
-to extract data on the C:N, C:P, and N:P ratios of lowland blueberry and red 
+to extract data on the C:N, C:P, and N:P ratios of lowbush blueberry and red 
 maple in the areas used by our snowshoe hares. First, let's clip the StDMs 
 rasters to our study area. This will make spatial operations a bit less time 
 and computation intensive.
 
-```{r stdms-clip, echo=TRUE, tidy=TRUE, fig.cap="Clipped StDMs predictions raster for lowland blueberry C:N ratio, before (left) and after (right) reprojection to the WGS84 UTM Zone 22 datum."}
+```{r stdms-clip, echo=TRUE, tidy=TRUE, fig.cap="Clipped StDMs predictions raster for lowbush blueberry C:N ratio, before (left) and after (right) reprojection to the WGS84 UTM Zone 22 datum."}
 # define the extent of our study area 
 e <- extent(860000, 863000, 5383000, 5386000)
 
@@ -714,19 +719,19 @@ par(mfrow = c(1,2))
 
 # clip each StDM raster to the extent e
 vaancnclip <- crop(vaanCN, e)
-image(vaancnclip) # check the cropping weorked
+image(vaancnclip) # check the cropping worked
 vaancpclip <- crop(vaanCP, e)
 vaannpclip <- crop(vaanNP, e)
 acrucnclip <- crop(acruCN, e)
 acrunpclip <- crop(acruNP, e)
 
-# reproject rasters so that they are using an up to date datum (WGS84 UTM Zone 22)
+# re-project rasters so that they are using an up to date datum (WGS84 UTM Zone 22)
 vaancnclip <- projectRaster(vaancnclip, crs="+init=epsg:32622")
 vaancpclip <- projectRaster(vaancpclip, crs="+init=epsg:32622")
 vaannpclip <- projectRaster(vaannpclip, crs="+init=epsg:32622")
 acrucnclip <- projectRaster(acrucnclip, crs="+init=epsg:32622")
 acrunpclip <- projectRaster(acrunpclip, crs="+init=epsg:32622")
-image(vaancnclip) # check the reprojecting worked
+image(vaancnclip) # check the re-projecting worked
 
 # create a rasterStack from these rasters 
 stoich_stack <- raster::stack(vaancnclip, vaancpclip, vaannpclip, acrucnclip, acrunpclip)
@@ -757,7 +762,7 @@ stoich50 <- dplyr::bind_rows(stoich.hr50, .id = "column_label") %>%
 stoich50 <- subset(stoich50, ID==2)
 
 # write .csv for Matteo
-write.csv(stoich50, "../Results/stoich50.csv")
+# write.csv(stoich50, "../Results/stoich50.csv")
 
 # extract the stoich values for all the 75% home ranges
 stoich.hr75 <- lapply(1:length(seventyfive), 
@@ -775,7 +780,7 @@ stoich75 <- dplyr::bind_rows(stoich.hr75, .id = "column_label") %>%
 
 stoich75 <- subset(stoich75, ID==2)
 
-write.csv(stoich75, "../Results/stoich75.csv")
+# write.csv(stoich75, "../Results/stoich75.csv")
 
 # extract the stoich values for all the 90% home ranges
 stoich.hr90 <- lapply(1:length(ninety), 
@@ -793,7 +798,7 @@ stoich90 <- dplyr::bind_rows(stoich.hr90, .id = "column_label") %>%
 
 stoich90 <- subset(stoich90, ID==2)
 
-write.csv(stoich90, "../Results/stoich90.csv")
+# write.csv(stoich90, "../Results/stoich90.csv")
 ```
 
 We will use the three object `stoich50`, `stoich75`, and `stoich90` in the 

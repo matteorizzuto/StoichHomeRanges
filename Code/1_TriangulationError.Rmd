@@ -83,7 +83,7 @@ trialData_2018 <- trialData_2018[, -1]
 # head(trialData_2018)
 ```
 
-We are going to reproject these data to an up to date datum.
+We are going to re-project these data to an up to date datum.
 
 ```{r error-data-crs-conversion, echo=TRUE, tidy=TRUE}
 # convert all of them to meters

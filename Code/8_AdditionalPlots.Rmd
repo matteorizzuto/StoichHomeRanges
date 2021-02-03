@@ -218,7 +218,7 @@ vis3all <- vis3_50kUD + vis3_75kUD + vis3_90kUD + plot_layout(ncol = 5, nrow = 1
 visall <- (vis2_50kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis2_75kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis2_90kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis3_50kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis3_75kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis3_90kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + plot_layout(ncol = 3, nrow = 2, guides = "collect", widths = c(1.5, 1.5, 1.5)) + plot_annotation(tag_levels = "a", tag_prefix = "(", tag_suffix = ")")
 
 # save it
-ggsave(visall, filename = "../Results/VAAN_HRvsCN.pdf", device = "pdf", dpi = 600, width = 25, height = 15)
+# ggsave(visall, filename = "../Results/VAAN_HRvsCN.pdf", device = "pdf", dpi = 600, width = 25, height = 15)
 ```
 
 ## Elemental concentrations of N and P in Red Maple and Blueberry
@@ -232,7 +232,7 @@ In the code chunk below, we begin by loading the full dataset for the plant SOI
 stoichiometry data. This dataset includes the following variables:
 
 * **SampleID**, a unique alphanumeric code that capture the site, location within the site, and species of each sample
-* **N**, **P**, **K**, **Mg**, **Ca**, **C** ,the % dry weight content of Nhe corresponding element in a given sample; elements include Nitrogen, Phosphorus, Potassium (K), Magnesium, Calcium, and Carbon
+* **N**, **P**, **K**, **Mg**, **Ca**, **C** ,the % dry weight content of the corresponding element in a given sample; elements include Nitrogen, Phosphorus, Potassium (K), Magnesium, Calcium, and Carbon
 * **SiteCode**, **TrapName**, **Species**, **PlotName**, additional subsetting variables
 
 After loading the dataset, we use `select()` in package `dplyr` to remove 
@@ -268,7 +268,7 @@ epPlot <- ggplot(data = epData, aes(x = Species, y = Content, fill = Species)) +
   theme(legend.position = "none",
         text = element_text(size = 22))
 
-ggsave(epPlot, filename = "../Results/epPlot.pdf", device = "pdf", dpi = 600, width = 12, height = 8)
+# ggsave(epPlot, filename = "../Results/epPlot.pdf", device = "pdf", dpi = 600, width = 12, height = 8)
 ```
  
 ## Browsing Data visualization
@@ -771,7 +771,7 @@ aKDEmaps <- tmap_arrange(aKDE.maps)
 
 aKDEmaps
 
-tmap_save(aKDEmaps, filename = "../Results/aKDEmaps.pdf", width = 20, height = 20, dpi = 600)
+# tmap_save(aKDEmaps, filename = "../Results/aKDEmaps.pdf", width = 20, height = 20, dpi = 600)
 
 rm(homeRangesClean)
 ```
@@ -785,7 +785,7 @@ only present a map of the StDM predictions for blueberry C:N. If you would like
 to see maps for blueberry C:P, N:P, and red maple C:N, N:P predictions, re-knit
 this notebook after un-commenting the relevant lines of code in the chunk below.
 
-```{r raster-Maps, echo=TRUE, warning=FALSE, tidy=TRUE, fig.cap="Map of our snowshoe hare live-trapping grid in the youngest forest stand (20-40 years old), with stoichiometric distribution models predictions for lowland blueberry C:N ratio."}
+```{r raster-Maps, echo=TRUE, warning=FALSE, tidy=TRUE, fig.cap="Map of our snowshoe hare live-trapping grid in the youngest forest stand (20-40 years old), with stoichiometric distribution models predictions for lowbush blueberry C:N ratio."}
 
 # Create a bounding box for the study area, to show in the inset reference map
 st_bbox(bl_grid_pts)
@@ -844,6 +844,11 @@ vaanCNmap
 # convert SiteName in the grid points shp file to a factor
 grid_points_all$SiteName <- as.factor(grid_points_all$SiteName) 
 
+# transform to EPSG:32622
+bl_grid_pts <- st_transform(bl_grid_points, 32622)
+
+grid_points_all <- st_transform(grid_points_all, 32622)
+
 # create color-blind safe palette
 starea_palette <- c("#e28dbe", "#4d9221", "#4d9221", "#4d9221")
 
@@ -865,13 +870,13 @@ canada_s <- st_make_valid(canada_s)
 canada_s$PRUID <- as.factor(canada_s$PRUID)
 
 # create coloring vectors for later
-starea_col <- nrow(canada_s)
+canmap_col <- nrow(canada_s)
   
-starea_col[c(2:13)] <- "white"
-starea_col[1] <- "gray75"
+canmap_col[c(2:13)] <- "white"
+canmap_col[1] <- "gray75"
 
 # set crs for canada
-canada_s <- st_transform(canada_s, st_crs(bl_grid_pts))
+canada_s <- st_transform(canada_s, st_crs(grid_points_all))
 
 
 # Simplify the geometry of the coastline, simplifying the lines by removing 
@@ -881,13 +886,24 @@ nlcoast<- ms_simplify(nl_coastline)
 
 nlcoastsf <- st_as_sf(nlcoast, crs = st_crs(na_coastline))
 
-nl_sf <- st_transform(nlcoastsf, crs = st_crs(bl_grid_pts))
+nl_sf <- st_transform(nlcoastsf, crs = st_crs(grid_points_all))
+
+# Load Terra Nova National Park outline
+tnnp_line <- read_sf(dsn = "../Data/Mapping/", layer = "TNNP_boundary_line")
+
+# transform to EPSG:32622
+tnnp_line_rep <- st_transform(tnnp_line, crs = st_crs(grid_points_all))
+# polygonize
+tnnp_poly <- st_polygonize(tnnp_line_rep)
+# create buffer
+tnnp_buff <- st_buffer(tnnp_poly, dist = 8000)
+
 
 # Create a bounding box for the study area, to show in the inset reference map
 st_bbox(grid_points_all)
 
-study.area <- st_bbox(c(xmin = 442963.0, xmax = 454538.4, 
-                           ymin = 5358796.4, ymax = 5390664.8), 
+study.area <- st_bbox(c(xmin = 268277.8, xmax = 281281.0, 
+                           ymin = 5359525.0, ymax = 5391518.3), 
                          crs = st_crs(grid_points_all)) %>% st_as_sfc()
 
 study.area <- st_bbox(grid_points_all) # current bounding box
@@ -913,12 +929,12 @@ shown by trap locations.
 # create the map of the study areas
 starea_map_int <- tm_shape(study.area, is.master = T) + 
   tm_borders(col = "red", lwd = 5) + tm_shape(grid_points_all) +
-  tm_symbols(col = "SiteName", size = 1, palette = starea_palette, border.col = "black") +
+  tm_symbols(col = "SiteName", palette = starea_palette, scale = 0.025) +
   tm_scale_bar(position = c("left", "bottom")) + 
   tm_basemap(server = "OpenTopoMap")
 
 tmap_mode(mode = "view")
-starea_map_int
+starea_map_int + tm_view(symbol.size.fixed = FALSE)
 ```
 
 Conversely, here we show the code to produce the static map of the study area
@@ -928,26 +944,25 @@ output of this code chunk, as it is already available in the SI.
 ```{r study-area-map-static, echo=TRUE, tidy=TRUE, message=FALSE}
 tmap_mode("plot")
 # create map of canada with newfoundland highlighted
-canmap <- tm_shape(canada_s) + tm_polygons(col = "PRUID", palette = starea_col, alpha = 0.5) + tm_shape(study.area) + tm_symbols(col = "#e28dbe", border.col = "black", size = 0.5) + tm_layout(asp=1, inner.margins = c(0.01, 0.01, 0.01, 0.01), bg.color = NA, legend.show = F) 
+canmap <- tm_shape(canada_s) + tm_polygons(col = "PRUID", palette = canmap_col, alpha = 0.5, border.alpha = 0.5) + tm_shape(study.area) + tm_symbols(col = "#e28dbe", border.col = "black", size = 0.25) + tm_layout(title = "(a)", title.position = c("left", "top"), asp=1, inner.margins = c(0.01, 0.01, 0.01, 0.01), bg.color = NA, legend.show = F) 
+# create the map of the NL with study area
+nlarea_map <- tm_shape(nl_sf, is.master = T) + tm_borders(alpha = 0.5) + tm_shape(tnnp_buff) + tm_polygons(col = "#e28dbe", border.col= "#e28dbe", alpha = 0.5) + tm_shape(tnnp_poly) + tm_polygons(col = "#e28dbe", border.col="black", lwd = 0.5) + tm_layout(title = "(b)", title.position = c("left", "top"), asp=1, inner.margins = c(0.01, 0.01, 0.01, 0.01), bg.color = NA, legend.show = F) 
 
 # create the map of the study areas
-starea_map <- tm_shape(nl_sf) + tm_borders() + tm_shape(grid_points_all) +
-  tm_symbols(col = "SiteName", size = 1, palette = starea_palette, border.col = "black") + 
-  tm_compass(position = c("right", "top"), size = 2, text.size = 2) + 
-  tm_scale_bar(position = c("left", "bottom"), text.size = 1.2) +
-  tm_layout(outer.margins = c(0.05, 0.01, 0.05, 0),
-            inner.margins = c(0.02, 0.3, 0.02, 0),
-            asp = 1.25,
-            legend.show = F)
-
-# starea_map
-# 
-# namap
-# print(canmap, grid::viewport(x = 0.202, y = 0.73, width = 0.45, height = 0.45))
+starea_map <- tm_shape(nl_sf) + tm_borders(alpha = 0.5) + tm_shape(tnnp_poly, is.master=T) + tm_polygons(col = "gray75", alpha = 0.2) + tm_shape(grid_points_all) + tm_symbols(col = "SiteName", shape = 20, palette = starea_palette) + tm_compass(position = c("right", "top"), size = 1.2, text.size = 1.2) + tm_scale_bar(position = c("right", "bottom")) + tm_layout(outer.margins = c(0.05, 0.01, 0.05, 0), inner.margins = c(0.02, 0.3, 0.02, 0), asp = 1.25, legend.show = F)
 
 # save the map with inset
-vp <- viewport(x = 0.227, y = 0.7332, width = 0.45, height = 0.45)
 
-tmap_save(starea_map, insets_tm = canmap, insets_vp = vp, filename = "../Results/StudyAreaMap.pdf", dpi = 600)
+vpall <- list()
+
+vpall[[1]] <- viewport(x = 0.19, y = 0.782, width = 0.35, height = 0.35)
+vpall[[2]] <- viewport(x = 0.19, y = 0.447, width = 0.35, height = 0.35)
+
+tmall <- list()
+
+tmall[[1]] <- canmap
+tmall[[2]] <- nlarea_map	
+
+# tmap_save(starea_map, insets_tm = tmall, insets_vp = vpall, filename = "../Results/StudyAreaMap.pdf", dpi = 600)
 ```
 

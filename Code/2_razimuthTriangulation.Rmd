@@ -102,7 +102,7 @@ vaanNP <- raster("../Data/StDMs_Rasters/Ratios/VAAN_NP.tif")
 ### Caveats
 The 2019 triangulation data were collected using decimal coordinates, whereas 
 for the 2017 and 2018 triangulation data we used UTM coordinates. The following 
-code chunk solves this discrepancy by reprojecting every triangulation dataset 
+code chunk solves this discrepancy by re-projecting every triangulation dataset 
 to the same projection used by our Stoichiometric Distribution Models, an 
 Universal Trasverse Mercator with these specifications: 
 `+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m +no_defs`
@@ -352,7 +352,7 @@ kable(vhfData, "html") %>%
 
 Now we add a column to the dataset that reports the date of collection 
 (`Date`) in the format `YYYY-MM-DD HH:MM:SS`. Then, we remove the columns that 
-are not necessary to run the analyses. Finally, we add a coolumn named `prior_r`. 
+are not necessary to run the analyses. Finally, we add a column named `prior_r`. 
 This is a fundamental component to run the triangulation in `razimuth`: `prior_r` 
 describes the maximum distance between a transmitter, e.g. a collar, and a 
 receiver, e.g. a VHF receiver. We could not measure this parameter in the field,
@@ -458,7 +458,7 @@ good idea to save time in future iterations of this notebook.
 ```{r atm-fits-save, eval=FALSE, tidy=TRUE, message=FALSE, results="hide"}
 # save the resulting model fits as and .rds object
 # this step allows us to not run the whole code each time, instead
-# skipping ahead of the most computationla intensive part
+# skipping ahead of the most computational intensive part
 lsfits <- saveRDS(lsfits, "../Results/razimuth_lsfits.rds")
 ```
 
@@ -586,7 +586,7 @@ dates <- vhfData %>%
 hares.triangd <- left_join(hares.atm,dates,by='cpid', keep=FALSE)
 ```
 
-Finally, we perform some dataset cleaning, before reprojecting it into a 
+Finally, we perform some dataset cleaning, before re-projecting it into a 
 Latitude/Longitude projection necessary for the Movebank format used by `ctmm`,
 and save the results to a csv file. 
 
@@ -598,7 +598,7 @@ hares.triangd <- subset(hares.triangd, hares.triangd$indiv != "149.374" &
 # with the highest number of relocations
 hares.triangd <- subset(hares.triangd, hares.triangd$indiv != "149.555")
 
-# reproject into lat/long and save - necessary for MoveBank
+# re-project into lat/long and save - necessary for MoveBank
 coordinates(hares.triangd) <- c("utm_x", "utm_y")
 proj4string(hares.triangd) <- CRS("+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m
                                     +no_defs")
@@ -607,5 +607,5 @@ hares.triangd <- as.data.frame(hares.triangd)
 hares.triangd <- hares.triangd %>%
   dplyr::rename(., lat=utm_y, long=utm_x)
 
-write.csv(hares.triangd, "../Results/harestriangulated_razimuth.csv")
+# write.csv(hares.triangd, "../Results/harestriangulated_razimuth.csv")
 ```

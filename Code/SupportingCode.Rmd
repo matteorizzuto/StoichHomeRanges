@@ -36,8 +36,8 @@ output:
 fontsize: 11pt
 geometry: margin=1in
 documentclass: article    
-bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
-csl: ../Manuscripts/oikos.csl
+bibliography: ../bibliography.bib
+csl: ../oecologia.csl
 editor_options: 
   chunk_output_type: inline
 header-includes:
@@ -62,7 +62,7 @@ header-includes:
 This document details the workflow for our analyses investigating whether resource
 elemental composition influences consumer home range size. We focus on a 
 study system including the snowshoe hare (*Lepus americanus*) and two of its
-preferred summer forage species, red maple (*Acer rubrum*) and lowland 
+preferred summer forage species, red maple (*Acer rubrum*) and lowbush 
 blueberry (*Vaccinium angustifolium*). The present document contains:
 
 * code to estimate the location of each snowshoe hare from daily telemetry 
@@ -93,7 +93,7 @@ name. The following table should be helpful in keeping track of what is what.
 Latin name                  Common Name             Acronym
 -----------------------     -----------             -------
 *Acer rubrum*               Red maple               ACRU
-*Vaccinium angustifolium*   Lowland blueberry       VAAN
+*Vaccinium angustifolium*   lowbush blueberry       VAAN
 
 ## Recompiling this notebook
 

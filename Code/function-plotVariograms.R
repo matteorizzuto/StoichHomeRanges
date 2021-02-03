@@ -25,8 +25,8 @@ varioPlot <- function(telemList,filePath, zoom = FALSE){
     
     plot(variog,fraction=1,level=level) 
     title(paste(name,sep=" "))
-    dev.copy(png,finalName)
-    dev.off()
+    # dev.copy(png,finalName)
+    # dev.off()
     
     if(zoom == TRUE){
       plotName <- paste(name,"zoomIn",sep="_")
@@ -35,8 +35,8 @@ varioPlot <- function(telemList,filePath, zoom = FALSE){
       
       plot(variog,xlim=c(0,12 %#% "hour"),level=level) # 0-12 hour window
       title(paste(name,"zoomed in",sep=" "))
-      dev.copy(png,finalName)
-      dev.off()
+      # dev.copy(png,finalName)
+      # dev.off()
     }
     
     
