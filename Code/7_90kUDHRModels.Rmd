@@ -27,20 +27,20 @@ output:
 fontsize: 11pt
 geometry: margin=1in
 documentclass: article    
-bibliography: ../bibliography.bib
-csl: ../oikos.csl
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/functional-ecology.csl
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r eval=FALSE, include=FALSE, tidy=TRUE}
 # if running as a standalone, change chunk options to evaluation this 
 # code chunk
-knitr::knit('HomeRangeEstimation.Rmd', tangle=TRUE)
-source('HomeRangeEstimation.R')
-
-knitr::knit('ModelStoichHR.Rmd', tangle=TRUE)
-source('ModelStoichHR.R')
+# knitr::knit('HomeRangeEstimation.Rmd', tangle=TRUE)
+# source('HomeRangeEstimation.R')
+# 
+# knitr::knit('ModelStoichHR.Rmd', tangle=TRUE)
+# source('ModelStoichHR.R')
 
 ```
 
@@ -143,12 +143,12 @@ hares.HR90 <- hr_ninety[, c(1,3)] %>%
 # merge the demographic and kUD dataframes, then reorder the variables more 
 # logically, and finally break variable "Date" into its three components
 # "Year", "Month", and "Day". "Year" will be important in later modelling. 
-hareData90 <- merge(hareDemData, hares.HR90, 
+hareData90 <- merge(hareDemClean, hares.HR90, 
                     by = "CollarFrequency") %>% 
   dplyr::select("CollarFrequency", "EarTag", "SiteName":"SamplingYear",
                 "WeightSSH_g":"TickLoad", "HRsize", "DateTrapped", 
                 "Comment") %>% 
-  separate("DateTrapped", into = c("YearTrp", "MonthTrp", "DayTrp"), 
+  tidyr::separate("DateTrapped", into = c("YearTrp", "MonthTrp", "DayTrp"), 
            sep = "-", remove = TRUE)
 
 hareData90$SamplingYear <- as.factor(hareData90$SamplingYear)
@@ -268,16 +268,18 @@ snowshoe hare population's sampling size, in the analyses below we will use the
 years with more data points for the 4 individuals for which we have more than
 one year of telemetry sampling.
 
-### Red Maple C:N  {.tabset .tabset-fade .tabset-pills}
+### Red maple C:N  {.tabset .tabset-fade .tabset-pills}
 
 Click on each tab to see the summary and diagnostic plots for each model.
 
 #### Intercept-only
 ```{r 90-ACRU-CN-null, echo=TRUE, tidy=TRUE}
-# 3. Red Maple CN mean
+
 acrucnnull.90 <- lm(HRsize ~ 1, data = hare.rich.90)
 
 summary(acrucnnull.90)
+
+confint(acrucnnull.90)
 ```
 
 #### Mean-only
@@ -287,6 +289,8 @@ acruCNhr.90 <- lm(HRsize ~ ACRU_CN_mean, data = hare.rich.90)
 
 # check model output
 summary(acruCNhr.90)
+
+confint(acruCNhr.90)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -302,6 +306,8 @@ acruCNcvhr.90 <- lm(HRsize ~ ACRU_CN_CVar, data = hare.rich.90)
 
 # check model output
 summary(acruCNcvhr.90)
+
+confint(acruCNcvhr.90)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -330,11 +336,13 @@ summary(acruCNcvhr.90)
 
 #### Mean + Weight
 ```{r 90-ACRU-CN-multi,echo=TRUE,tidy=TRUE}
-# 1. Red Maple CN mean
+
 acruCNhr.exp.90 <- lm(HRsize ~ ACRU_CN_mean + WeightSSH_g, data = hare.rich.90)
 
 # check model output
 summary(acruCNhr.exp.90)
+
+confint(acruCNhr.exp.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -350,7 +358,7 @@ acruCNcv.exp.90 <- lm(HRsize ~ ACRU_CN_CVar + WeightSSH_g, data = hare.rich.90)
 # check model output
 summary(acruCNcv.exp.90)
 
-# confint(acruCNcv.exp.90)
+confint(acruCNcv.exp.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -392,7 +400,7 @@ acrucn.plus.90 <- lm(HRsize ~ ACRU_CN_mean+ACRU_CN_CVar, data = hare.rich.90)
 
 summary(acrucn.plus.90)
 
-# confint(acrucn.plus.90)
+confint(acrucn.plus.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -405,6 +413,8 @@ summary(acrucn.plus.90)
 acrucn.joint.90 <- lm(HRsize ~ ACRU_CN_mean*ACRU_CN_CVar, data = hare.rich.90)
 
 summary(acrucn.joint.90)
+
+confint(acrucn.joint.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -417,6 +427,8 @@ summary(acrucn.joint.90)
 acrucn.sw.90 <- lm(HRsize ~ ACRU_CN_mean+ACRU_CN_CVar+WeightSSH_g, data = hare.rich.90)
 
 summary(acrucn.sw.90)
+
+confint(acrucn.sw.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -429,6 +441,8 @@ summary(acrucn.sw.90)
 acrucn.jsw.90 <- lm(HRsize ~ ACRU_CN_mean*ACRU_CN_CVar+WeightSSH_g, data = hare.rich.90)
 
 summary(acrucn.jsw.90)
+
+confint(acrucn.jsw.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -477,19 +491,25 @@ rsqdf.90$Modnames <- as_factor(rsqdf.90$Modnames)
 acruCNaicRsq.90 <- acruCN_aicctab.90 %>% merge(., rsqdf.90) %>% arrange(., Delta_AICc)  
 
 # Generate publication quality AIC table
-gt(acruCNaicRsq.90) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Red Maple C:N - 90% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+acruCNtab90 <- gt(acruCNaicRsq.90) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Red maple C:N - 90% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+
+gtsave(acruCNtab90, "../Results/ACRU_CN_90modseltab.tex")
+
+acruCNtab90
 ```
 
-### Blueberry C:N  {.tabset .tabset-fade .tabset-pills}
+### Lowbush Blueberry C:N  {.tabset .tabset-fade .tabset-pills}
 
 Click on each tab to see the summary and diagnostic plots for each model.
 
 #### Intercept-only
 ```{r 90-VAAN-CN-null, echo=TRUE, tidy=TRUE}
-# 2. Blueberry CN mean
+
 vaancnnull.90 <- lm(HRsize ~ 1, data = hare.rich.90)
 
 summary(vaancnnull.90)
+
+confint(vaancnnull.90)
 ```
 
 #### Mean-only
@@ -499,6 +519,7 @@ vaanCNhr.90 <- lm(HRsize ~ VAAN_CN_mean, data = hare.rich.90)
 
 summary(vaanCNhr.90)
 
+confint(vaanCNhr.90)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -532,6 +553,8 @@ summary(vaanCNhr.90)
 vaanCNcvhr.90 <- lm(HRsize ~ VAAN_CN_CVar, data = hare.rich.90)
 
 summary(vaanCNcvhr.90)
+
+confint(vaanCNcvhr.90)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -561,10 +584,12 @@ summary(vaanCNcvhr.90)
 
 #### Mean + Weight
 ```{r 90-VAAN-CN-multi,echo=TRUE,tidy=TRUE}
-# 2. Blueberry CN mean
+
 vaanCNhr.exp.90 <- lm(HRsize ~ VAAN_CN_mean + WeightSSH_g, data = hare.rich.90)
 
 summary(vaanCNhr.exp.90)
+
+confint(vaanCNhr.exp.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -605,6 +630,8 @@ summary(vaanCNhr.exp.90)
 vaanCNcv.exp.90 <- lm(HRsize ~ VAAN_CN_CVar + WeightSSH_g, data = hare.rich.90)
 
 summary(vaanCNcv.exp.90)
+
+confint(vaanCNcv.exp.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -763,19 +790,25 @@ rsqdf.90$Modnames <- as_factor(rsqdf.90$Modnames)
 vaanCNaicRsq.90 <- vaanCN_aicctab.90 %>% merge(., rsqdf.90) %>% arrange(., Delta_AICc)  
 
 # Generate publication quality AIC table
-gt(vaanCNaicRsq.90) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Blueberry C:N - 90% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+vaanCNtab90 <- gt(vaanCNaicRsq.90) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Lowbush blueberry C:N - 90% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+
+gtsave(vaanCNtab90, "../Results/VAAN_CN_90modseltab.tex")
+
+vaanCNtab90
 ```
 
-### Red Maple N:P  {.tabset .tabset-fade .tabset-pills}
+### Red maple N:P  {.tabset .tabset-fade .tabset-pills}
 
 Click on each tab to see the summary and diagnostic plots for each model.
 
 #### Intercept-only
 ```{r 90-ACRU-NP-null, echo=TRUE, tidy=TRUE}
-# 3. Red Maple NP mean
+
 acrunpnull.90 <- lm(HRsize ~ 1, data = hare.rich.90)
 
 summary(acrunpnull.90)
+
+confint(acrunpnull.90)
 ```
 
 #### Mean-only
@@ -784,6 +817,8 @@ summary(acrunpnull.90)
 acruNPhr.90 <- lm(HRsize ~ ACRU_NP_mean, data = hare.rich.90)
 
 summary(acruNPhr.90)
+
+confint(acruNPhr.90)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -817,6 +852,8 @@ summary(acruNPhr.90)
 acruNPcvhr.90 <- lm(HRsize ~ ACRU_NP_CVar, data = hare.rich.90)
 
 summary(acruNPcvhr.90)
+
+confint(acruNPcvhr.90)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -827,10 +864,12 @@ summary(acruNPcvhr.90)
 
 #### Mean + Weight
 ```{r 90-ACRU-NP-multi,echo=TRUE,tidy=TRUE}
-# 3. Red Maple NP mean
+
 acruNPhr.exp.90 <- lm(HRsize ~ ACRU_NP_mean + WeightSSH_g, data = hare.rich.90)
 
 summary(acruNPhr.exp.90)
+
+confint(acruNPhr.exp.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -870,6 +909,8 @@ summary(acruNPhr.exp.90)
 acruNPcv.exp.90 <- lm(HRsize ~ ACRU_NP_CVar + WeightSSH_g, data = hare.rich.90)
 
 summary(acruNPcv.exp.90)
+
+confint(acruNPcv.exp.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -883,7 +924,7 @@ acrunp.plus.90 <- lm(HRsize ~ ACRU_NP_mean+ACRU_NP_CVar, data = hare.rich.90)
 
 summary(acrunp.plus.90)
 
-# confint(acrunp.plus.90)
+confint(acrunp.plus.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -924,7 +965,7 @@ acrunp.joint.90 <- lm(HRsize ~ ACRU_NP_mean*ACRU_NP_CVar, data = hare.rich.90)
 
 summary(acrunp.joint.90)
 
-# confint(acrunp.joint.90)
+confint(acrunp.joint.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -938,7 +979,7 @@ acrunp.sw.90 <- lm(HRsize ~ ACRU_NP_mean+ACRU_NP_CVar+WeightSSH_g, data = hare.r
 
 summary(acrunp.sw.90)
 
-# confint(acrunp.sw.90)
+confint(acrunp.sw.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -951,6 +992,8 @@ summary(acrunp.sw.90)
 acrunp.jsw.90 <- lm(HRsize ~ ACRU_NP_mean*ACRU_NP_CVar+WeightSSH_g, data = hare.rich.90)
 
 summary(acrunp.jsw.90)
+
+confint(acrunp.jsw.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -999,19 +1042,25 @@ rsqdf.90$Modnames <- as_factor(rsqdf.90$Modnames)
 acruNPaicRsq.90 <- acruNP_aicctab.90 %>% merge(., rsqdf.90) %>% arrange(., Delta_AICc)  
 
 # Generate publication quality AIC table
-gt(acruNPaicRsq.90) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Red Maple N:P - 90% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+acruNPtab90 <- gt(acruNPaicRsq.90) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Red maple N:P - 90% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+
+gtsave(acruNPtab90, "../Results/ACRU_NP_90modseltab.tex")
+
+acruNPtab90
 ```
 
-### Blueberry N:P  {.tabset .tabset-fade .tabset-pills}
+### Lowbush blueberry N:P  {.tabset .tabset-fade .tabset-pills}
 
 Click on each tab to see the summary and diagnostic plots for each model.
 
 #### Intercept-only
 ```{r 90-VAAN-NP-null, echo=TRUE, tidy=TRUE}
-# 4. Blueberry NP mean
+
 vaannpnull.90 <- lm(HRsize ~ 1, data = hare.rich.90)
 
 summary(vaannpnull.90)
+
+confint(vaannpnull.90)
 ```
 
 #### Mean-only
@@ -1020,6 +1069,8 @@ summary(vaannpnull.90)
 vaanNPhr.90 <- lm(HRsize ~ VAAN_NP_mean, data = hare.rich.90)
 
 summary(vaanNPhr.90)
+
+confint(vaanNPhr.90)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -1052,6 +1103,8 @@ summary(vaanNPhr.90)
 vaanNPcvhr.90 <- lm(HRsize ~ VAAN_NP_CVar, data = hare.rich.90)
 
 summary(vaanNPcvhr.90)
+
+confint(vaanNPcvhr.90)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -1066,7 +1119,7 @@ vaanNPhr.exp.90 <- lm(HRsize ~ VAAN_NP_mean + WeightSSH_g, data = hare.rich.90)
 
 summary(vaanNPhr.exp.90)
 
-# confint(vaanNPhr.exp.90)
+confint(vaanNPhr.exp.90)
 ```
 <!-- *Diagnostic Plots* -->
 <!-- ```{r 90-VAAN-NP-multi-diag,echo=TRUE,tidy=TRUE} -->
@@ -1104,6 +1157,8 @@ summary(vaanNPhr.exp.90)
 vaanNPcv.exp.90 <- lm(HRsize ~ VAAN_NP_CVar + WeightSSH_g, data = hare.rich.90)
 
 summary(vaanNPcv.exp.90)
+
+confint(vaanNPcv.exp.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1117,7 +1172,7 @@ vaannp.plus.90 <- lm(HRsize ~ VAAN_NP_mean+VAAN_NP_CVar, data = hare.rich.90)
 
 summary(vaannp.plus.90)
 
-# confint(vaannp.plus.90)
+confint(vaannp.plus.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1130,6 +1185,8 @@ summary(vaannp.plus.90)
 vaannp.joint.90 <- lm(HRsize ~ VAAN_NP_mean*VAAN_NP_CVar, data = hare.rich.90)
 
 summary(vaannp.joint.90)
+
+confint(vaannp.joint.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1142,6 +1199,8 @@ summary(vaannp.joint.90)
 vaannp.sw.90 <- lm(HRsize ~ VAAN_NP_mean+VAAN_NP_CVar+WeightSSH_g, data = hare.rich.90)
 
 summary(vaannp.sw.90)
+
+confint(vaannp.sw.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1154,6 +1213,8 @@ summary(vaannp.sw.90)
 vaannp.jsw.90 <- lm(HRsize ~ VAAN_NP_mean*VAAN_NP_CVar+WeightSSH_g, data = hare.rich.90)
 
 summary(vaannp.jsw.90)
+
+confint(vaannp.jsw.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1202,19 +1263,25 @@ rsqdf.90$Modnames <- as_factor(rsqdf.90$Modnames)
 # save now complete AICc table to a new object
 vaanNPaicRsq.90 <- vaanNP_aicctab.90 %>% merge(., rsqdf.90) %>% arrange(., Delta_AICc) 
 
-gt(vaanNPaicRsq.90) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Blueberry N:P - 90% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+vaanNPtab90 <- gt(vaanNPaicRsq.90) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Lowbush blueberry N:P - 90% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+
+gtsave(vaanNPtab90, "../Results/VAAN_NP_90modseltab.tex")
+
+vaanNPtab90
 ```
 
-### Blueberry C:P  {.tabset .tabset-fade .tabset-pills}
+### Lowbush blueberry C:P  {.tabset .tabset-fade .tabset-pills}
 
 Click on each tab to see the summary and diagnostic plots for each model.
 
 #### Intercept-only
 ```{r 90-VAAN-CP-null, echo=TRUE, tidy=TRUE}
-# 5. Blueberry CP mean
+
 vaancpnull.90 <- lm(HRsize ~ 1, data = hare.rich.90)
 
 summary(vaancpnull.90)
+
+confint(vaancpnull.90)
 ```
 
 #### Mean-only
@@ -1223,6 +1290,8 @@ summary(vaancpnull.90)
 vaanCPhr.90 <- lm(HRsize ~ VAAN_CP_mean, data = hare.rich.90)
 
 summary(vaanCPhr.90)
+
+confint(vaanCPhr.90)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -1255,6 +1324,8 @@ summary(vaanCPhr.90)
 vaanCPcvhr.90 <- lm(HRsize ~ VAAN_CP_CVar, data = hare.rich.90)
 
 summary(vaanCPcvhr.90)
+
+confint(vaanCPcvhr.90)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -1269,7 +1340,7 @@ vaanCPhr.exp.90 <- lm(HRsize ~ VAAN_CP_mean + WeightSSH_g, data = hare.rich.90)
 
 summary(vaanCPhr.exp.90)
 
-# confint(vaanCPhr.exp.90)
+confint(vaanCPhr.exp.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1308,6 +1379,8 @@ summary(vaanCPhr.exp.90)
 vaanCPcv.exp.90 <- lm(HRsize ~ VAAN_CP_CVar + WeightSSH_g, data = hare.rich.90)
 
 summary(vaanCPcv.exp.90)
+
+confint(vaanCPcv.exp.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1322,7 +1395,7 @@ vaancp.plus.90 <- lm(HRsize ~ VAAN_CP_mean+VAAN_CP_CVar, data = hare.rich.90)
 
 summary(vaancp.plus.90)
 
-# confint(vaancp.plus.90)
+confint(vaancp.plus.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1335,6 +1408,8 @@ summary(vaancp.plus.90)
 vaancp.joint.90 <- lm(HRsize ~ VAAN_CP_mean*VAAN_CP_CVar, data = hare.rich.90)
 
 summary(vaancp.joint.90)
+
+confint(vaancp.joint.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1347,6 +1422,8 @@ summary(vaancp.joint.90)
 vaancp.sw.90 <- lm(HRsize ~ VAAN_CP_mean+VAAN_CP_CVar+WeightSSH_g, data = hare.rich.90)
 
 summary(vaancp.sw.90)
+
+confint(vaancp.sw.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1359,6 +1436,8 @@ summary(vaancp.sw.90)
 vaancp.jsw.90 <- lm(HRsize ~ VAAN_CP_mean*VAAN_CP_CVar+WeightSSH_g, data = hare.rich.90)
 
 summary(vaancp.jsw.90)
+
+confint(vaancp.jsw.90)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1407,7 +1486,11 @@ rsqdf.90$Modnames <- as_factor(rsqdf.90$Modnames)
 # save now complete AICc table to a new object
 vaanCPaicRsq.90 <- vaanCP_aicctab.90 %>% merge(., rsqdf.90) %>% arrange(., Delta_AICc) 
 
-gt(vaanCPaicRsq.90) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Blueberry C:P - 90% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+vaanCPtab90 <- gt(vaanCPaicRsq.90) %>% fmt_number(columns = 3:9, decimals = 3) %>% tab_header("Model Selection for Lowbush blueberry C:P - 90% kUD") %>% cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", Delta_AICc = html("&Delta;AICc"), ModelLik ="Model Likelihood", AICcWt = "AICc Weight", LL ="Log-Lik", Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+
+gtsave(vaanCPtab90, "../Results/VAAN_CP_90modseltab.tex")
+
+vaanCPtab90
 ```
 
 ### Table summary of AICc top models
@@ -1422,35 +1505,42 @@ top.mods.90[[4]] <- vaanCNaicRsq.90[9,]
 
 # Blueberry N:P ratio top models
 top.mods.90[[5]] <- vaanNPaicRsq.90[1,]
+top.mods.90[[6]] <- vaanNPaicRsq.90[2,]
 
 # Blueberry C:P ratio top models
-top.mods.90[[6]] <- vaanCPaicRsq.90[1,]
+top.mods.90[[7]] <- vaanCPaicRsq.90[1,]
+top.mods.90[[8]] <- vaanCPaicRsq.90[3,]
 
 # Red maple N:P ratio top models
-top.mods.90[[7]] <- acruNPaicRsq.90[1,]
+top.mods.90[[9]] <- acruNPaicRsq.90[1,]
 
 # Red maple C:N ratio top models
-top.mods.90[[8]] <- acruCNaicRsq.90[1,]
+top.mods.90[[10]] <- acruCNaicRsq.90[1,]
+top.mods.90[[11]] <- acruCNaicRsq.90[2,]
 
-top.mods.90 %>% bind_rows() %>% gt() %>% 
+SumTab90 <- top.mods.90 %>% bind_rows() %>% gt() %>% 
   fmt_number(columns = 3:9, decimals = 3) %>% 
-  tab_row_group(., group = "Blueberry C:N top models", rows = c(1:4)) %>% 
-  tab_row_group(., group = "Blueberry N:P top models", rows = c(5)) %>% 
-  tab_row_group(., group = "Bluberry C:P top models", rows = c(6)) %>% 
-  tab_row_group(., group = "Red Maple N:P top models", rows = c(7)) %>% 
-  tab_row_group(., group = "Red Maple C:N top models", rows = c(8)) %>% 
+  tab_row_group(., group = "Lowbush blueberry C:N top models", rows = c(1:4)) %>% 
+  tab_row_group(., group = "Lowbush blueberry N:P top models", rows = c(5,6)) %>% 
+  tab_row_group(., group = "Lowbush blueberry C:P top models", rows = c(7,8)) %>% 
+  tab_row_group(., group = "Red maple N:P top models", rows = c(9)) %>% 
+  tab_row_group(., group = "Red maple C:N top models", rows = c(10,11)) %>% 
   cols_hide(columns = vars(AICc, ModelLik, AICcWt, Cum.Wt)) %>% 
   cols_label(Modnames = "Model", K = "K", Delta_AICc = html("&Delta;AICc"), 
              LL ="LL", Rsq = html("R<sup>2</sup>"))
+
+gtsave(SumTab90, filename = "../Results/ModSel90kUD_SummaryTable.tex")
+
+SumTab90
 ```
 
 The table below includes a breakdown of the uninformative parameters we removed, 
 for each stoichiometric ratio-plant species pair. 
 
-Model group               Uninformative Parameters
--------------------       --------------------------------
-Blueberry C:N ratio       Body Weight, Mean-CV interaction
-Blueberry N:P ratio       None
-BLueberry C:P ratio       None
-Red maple N:P ratio       None
-Red maple C:N ratio       None
+Model group                       Uninformative Parameters
+---------------------------       --------------------------------
+Lowbush blueberry C:N ratio       Body Weight, Mean-CV interaction
+Lowbush blueberry N:P ratio       None
+Lowbush blueberry C:P ratio       CV
+Red maple N:P ratio               None
+Red maple C:N ratio               None

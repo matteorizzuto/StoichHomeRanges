@@ -30,8 +30,8 @@ output:
 fontsize: 11pt
 geometry: margin=1in
 documentclass: article    
-bibliography: ../bibliography.bib
-csl: ../oikos.csl
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/functional-ecology.csl
 editor_options: 
   chunk_output_type: console
 header-includes:
@@ -54,12 +54,11 @@ header-includes:
 ```{r eval=FALSE, include=FALSE, tidy=TRUE}
 # if running as a standalone, change chunk options to evaluation this 
 # code chunk
-knitr::knit('StoichiometryOfHomeRanges.Rmd', tangle=TRUE)
-source('StoichiometryOfHomeRanges.R')
-
-knitr::knit('HomeRangeEstimation.Rmd', tangle=TRUE)
-source('HomeRangeEstimation.R')
-# source("Model_ICRaKDE_prep.R")
+# knitr::knit('StoichiometryOfHomeRanges.Rmd', tangle=TRUE)
+# source('StoichiometryOfHomeRanges.R')
+# 
+# knitr::knit('HomeRangeEstimation.Rmd', tangle=TRUE)
+# source('HomeRangeEstimation.R')
 ```
 
 Here we perform our analyses investigating the relationship between the
@@ -165,7 +164,7 @@ hareData <- merge(hareDemClean, hares.core, by = "CollarFrequency") %>%
   dplyr::select("CollarFrequency", "EarTag", "SiteName":"SamplingYear",
                 "HRsize", "WeightSSH_g":"TickLoad", 
                 "DateTrapped", "Comment") %>% 
-  separate("DateTrapped", into = c("YearTrp", "MonthTrp", "DayTrp"), 
+  tidyr::separate("DateTrapped", into = c("YearTrp", "MonthTrp", "DayTrp"), 
            sep = "-", remove = TRUE)
 
 hareData$SamplingYear <- as.factor(hareData$SamplingYear)
@@ -395,7 +394,19 @@ models below as there is no evidence of this variable having an effect on home
 range size (see above). Furthermore, we use the `hare.rich` dataset to perform 
 all analyses, to include only home range estimates from the years with the higher 
 number of data points for those individuals for which we have more than one year 
-of telemetry sampling.
+of telemetry sampling. The following code chunk extracts the summary 
+statistics---i.e., median and range---reported for home range size and plant SOI 
+stoichiometric ratios within the core area that we report in the Results section
+of the manuscript (values not shown).
+
+```{r summary-stats-harerich,echo=TRUE,tidy=TRUE, results='hide'}
+hare.rich %>% dplyr::group_by(., SamplingYear) %>% dplyr::summarise(., avgHR = mean(HRsize), maxHR = max(HRsize), minHR = min(HRsize))
+
+summary(hare.rich$HRsize)
+
+stoich50 %>% dplyr::summarise_at(., vars(VAAN_CN:ACRU_NP), list(min = min, median = median, max = max), na.rm=TRUE)
+```
+
 
 Below, we report the results of each model grouped by species and stoichiometric 
 ratio combination. Each set of analyses includes 8 models and a null model, as 
@@ -410,17 +421,19 @@ showing the difference between the observed home range size and that
 predicted by the model.
 
 
-### Red Maple C:N  {.tabset .tabset-fade .tabset-pills}
+### Red maple C:N  {.tabset .tabset-fade .tabset-pills}
 
 Click on each tab to see the summary and diagnostic plots for each model.
 
 #### Intercept-only
 ```{r ACRU-CN-null, echo=TRUE, tidy=TRUE, warning=FALSE}
-# Red Maple CN mean
+
 acrucnnull <- lm(HRsize ~ 1, data = hare.rich)
 
 # check model output
 summary(acrucnnull)
+
+confint(acrucnnull)
 ```
 
 #### Mean-only
@@ -430,6 +443,8 @@ acruCNhr <- lm(HRsize ~ ACRU_CN_mean, data = hare.rich)
 
 # check model output
 summary(acruCNhr)
+
+confint(acruCNhr)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -445,7 +460,8 @@ acruCNcvhr <- lm(HRsize ~ ACRU_CN_CVar, data = hare.rich)
 
 # check model output
 summary(acruCNcvhr)
-# confint(acruCNcvhr)
+
+confint(acruCNcvhr)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -456,11 +472,13 @@ summary(acruCNcvhr)
 
 #### Mean + Weight
 ```{r ACRU-CN-multi,echo=TRUE,tidy=TRUE}
-# 1. Red Maple CN mean
+
 acruCNhr.exp <- lm(HRsize ~ ACRU_CN_mean + WeightSSH_g, data = hare.rich)
 
 # check model output
 summary(acruCNhr.exp)
+
+confint(acruCNhr.exp)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -475,6 +493,8 @@ acruCNcv.exp <- lm(HRsize ~ ACRU_CN_CVar + WeightSSH_g, data = hare.rich)
 
 # check model output
 summary(acruCNcv.exp)
+
+confint(acruCNcv.exp)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -488,7 +508,8 @@ summary(acruCNcv.exp)
 acrucn.plus <- lm(HRsize ~ ACRU_CN_mean+ACRU_CN_CVar, data = hare.rich)
 
 summary(acrucn.plus)
-# confint(acrucn.plus)
+
+confint(acrucn.plus)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -501,6 +522,8 @@ summary(acrucn.plus)
 acrucn.joint <- lm(HRsize ~ ACRU_CN_mean*ACRU_CN_CVar, data = hare.rich)
 
 summary(acrucn.joint)
+
+confint(acrucn.joint)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -544,6 +567,8 @@ acrucn.sw <- lm(HRsize ~ ACRU_CN_mean+ACRU_CN_CVar+WeightSSH_g,
                 data = hare.rich)
 
 summary(acrucn.sw)
+
+confint(acrucn.sw)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -557,6 +582,8 @@ acrucn.jsw <- lm(HRsize ~ ACRU_CN_mean*ACRU_CN_CVar+WeightSSH_g,
                  data = hare.rich)
 
 summary(acrucn.jsw)
+
+confint(acrucn.jsw)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -606,24 +633,30 @@ rsqdf$Modnames <- as_factor(rsqdf$Modnames)
 acruCNaicRsq <- acruCN_aicctab %>% merge(., rsqdf) %>% arrange(., Delta_AICc)  
 
 # Generate publication quality AIC table (knit to pdf)
-gt(acruCNaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>%
-  tab_header("Model Selection for Red Maple C:N") %>%
+acruCNtab50 <- gt(acruCNaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>%
+  tab_header("Model Selection for Red maple C:N") %>%
   cols_label(Modnames ="Models formula", K = "K", AICc = "AICc",
              Delta_AICc = html("&Delta; AICc"), ModelLik ="Model Likelihood",
              AICcWt = "AICc Weight", LL ="Log-Lik",
              Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+
+gtsave(acruCNtab50, "../Results/ACRU_CN_50modseltab.tex")
+
+acruCNtab50
 ```
 
-### Blueberry C:N  {.tabset .tabset-fade .tabset-pills}
+### Lowbush blueberry C:N  {.tabset .tabset-fade .tabset-pills}
 
 Click on each tab to see the summary and diagnostic plots for each model. 
 
 #### Intercept-only
 ```{r VAAN-CN-null, echo=TRUE, tidy=TRUE}
-# 2. Blueberry CN mean
+
 vaancnnull <- lm(HRsize ~ 1, data = hare.rich)
 
 summary(vaancnnull)
+
+confint(vaancnnull)
 ```
 
 #### Mean-only
@@ -632,6 +665,8 @@ summary(vaancnnull)
 vaanCNhr <- lm(HRsize ~ VAAN_CN_mean, data = hare.rich)
 
 summary(vaanCNhr)
+
+confint(vaanCNhr)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -665,6 +700,8 @@ summary(vaanCNhr)
 vaanCNcvhr <- lm(HRsize ~ VAAN_CN_CVar, data = hare.rich)
 
 summary(vaanCNcvhr)
+
+confint(vaanCNcvhr)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -695,12 +732,12 @@ summary(vaanCNcvhr)
 
 #### Mean + Weight
 ```{r VAAN-CN-multi,echo=TRUE,tidy=TRUE}
-# 2. Blueberry CN mean
+
 vaanCNhr.exp <- lm(HRsize ~ VAAN_CN_mean + WeightSSH_g, data = hare.rich)
 
 summary(vaanCNhr.exp)
 
-# confint(vaanCNhr.exp)
+confint(vaanCNhr.exp)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -714,6 +751,8 @@ summary(vaanCNhr.exp)
 vaanCNcv.exp <- lm(HRsize ~ VAAN_CN_CVar + WeightSSH_g, data = hare.rich)
 
 summary(vaanCNcv.exp)
+
+confint(vaanCNcv.exp)
 
 # ggplot(data = hare.rich, aes(x = hare.rich$VAAN_CN_CVar, 
 # y = hare.rich$HRsize)) + geom_point(aes(fill = WeightSSH_g), 
@@ -767,7 +806,7 @@ vaancn.plus <- lm(HRsize ~ VAAN_CN_mean+VAAN_CN_CVar, data = hare.rich)
 
 summary(vaancn.plus) 
 
-# confint(vaancn.plus)
+confint(vaancn.plus)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -855,7 +894,7 @@ vaancn.sw <- lm(HRsize ~ VAAN_CN_mean+VAAN_CN_CVar+WeightSSH_g,
 
 summary(vaancn.sw)
 
-# confint(vaancn.sw)
+confint(vaancn.sw)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -869,6 +908,8 @@ vaancn.jsw <- lm(HRsize ~ VAAN_CN_mean*VAAN_CN_CVar+WeightSSH_g,
                  data = hare.rich)
 
 summary(vaancn.jsw)
+
+confint(vaancn.jsw)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -920,24 +961,30 @@ rsqdf <- enframe(rsq, name = "Modnames", value = "Rsq") %>%
 # save the now complete AICc table to a new object
 vaanCNaicRsq <- vaanCN_aicctab %>% merge(., rsqdf) %>% arrange(., Delta_AICc) 
 
-gt(vaanCNaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
-  tab_header("Model Selection for Blueberry C:N") %>% 
+vaanCNtab50 <- gt(vaanCNaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
+  tab_header("Model Selection for Lowbush blueberry C:N") %>% 
     cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", 
              Delta_AICc = html("&Delta; AICc"), ModelLik ="Model Likelihood", 
              AICcWt = "AICc Weight", LL ="Log-Lik", 
              Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+
+gtsave(vaanCNtab50, "../Results/VAAN_CN_50modseltab.tex")
+
+vaanCNtab50
 ```
 
-### Red Maple N:P  {.tabset .tabset-fade .tabset-pills}
+### Red maple N:P  {.tabset .tabset-fade .tabset-pills}
 
 Click on each tab to see the summary and diagnostic plots for each model.
 
 #### Intercept-only
 ```{r ACRU-NP-null, echo=TRUE, tidy=TRUE}
-# 3. Red Maple NP mean
+
 acrunpnull <- lm(HRsize ~ 1, data = hare.rich)
 
 summary(acrunpnull)
+
+confint(acrunpnull)
 ```
 
 #### Mean-only
@@ -946,7 +993,8 @@ summary(acrunpnull)
 acruNPhr <- lm(HRsize ~ ACRU_NP_mean, data = hare.rich)
 
 summary(acruNPhr)
-# confint(acruNPhr)
+
+confint(acruNPhr)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -1013,10 +1061,12 @@ confint(acruNPcvhr)
 
 #### Mean + Weight
 ```{r ACRU-NP-multi,echo=TRUE,tidy=TRUE}
-# 3. Red Maple NP mean
+
 acruNPhr.exp <- lm(HRsize ~ ACRU_NP_mean + WeightSSH_g, data = hare.rich)
 
 summary(acruNPhr.exp)
+
+confint(acruNPhr.exp)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1088,7 +1138,7 @@ acrunp.joint <- lm(HRsize ~ ACRU_NP_mean*ACRU_NP_CVar, data = hare.rich)
 
 summary(acrunp.joint)
 
-# confint(acrunp.joint)
+confint(acrunp.joint)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1132,7 +1182,7 @@ acrunp.sw <- lm(HRsize ~ ACRU_NP_mean+ACRU_NP_CVar+WeightSSH_g,
 
 summary(acrunp.sw)
 
-# confint(acrunp.sw)
+confint(acrunp.sw)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1146,6 +1196,8 @@ acrunp.jsw <- lm(HRsize ~ ACRU_NP_mean*ACRU_NP_CVar+WeightSSH_g,
                  data = hare.rich)
 
 summary(acrunp.jsw)
+
+confint(acrunp.jsw)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1197,25 +1249,31 @@ rsqdf$Modnames <- as_factor(rsqdf$Modnames)
 acruNPaicRsq <- acruNP_aicctab %>% merge(., rsqdf) %>% arrange(., Delta_AICc) 
 
 # create publication-quality AICc table
-gt(acruNPaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
-  tab_header("Model Selection for Red Maple N:P") %>% 
+acruNPtab50 <- gt(acruNPaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
+  tab_header("Model Selection for Red maple N:P") %>% 
     cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", 
              Delta_AICc = html("&Delta; AICc"), ModelLik ="Model Likelihood", 
              AICcWt = "AICc Weight", LL ="Log-Lik", 
              Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+
+gtsave(acruNPtab50, "../Results/ACRU_NP_50modseltab.tex")
+
+acruNPtab50
 ```
 
 
-### Blueberry N:P  {.tabset .tabset-fade .tabset-pills}
+### Lowbush blueberry N:P  {.tabset .tabset-fade .tabset-pills}
 
 Click on each tab to see the summary and diagnostic plots for each model.
 
 #### Intercept-only
 ```{r VAAN-NP-null, echo=TRUE, tidy=TRUE}
-# 4. Blueberry NP mean
+
 vaannpnull <- lm(HRsize ~ 1, data = hare.rich)
 
 summary(vaannpnull)
+
+confint(vaannpnull)
 ```
 
 #### Mean-only
@@ -1224,6 +1282,8 @@ summary(vaannpnull)
 vaanNPhr <- lm(HRsize ~ VAAN_NP_mean, data = hare.rich)
 
 summary(vaanNPhr)
+
+confint(vaanNPhr)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -1257,6 +1317,8 @@ summary(vaanNPhr)
 vaanNPcvhr <- lm(HRsize ~ VAAN_NP_CVar, data = hare.rich)
 
 summary(vaanNPcvhr)
+
+confint(vaanNPcvhr)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -1271,7 +1333,7 @@ vaanNPhr.exp <- lm(HRsize ~ VAAN_NP_mean + WeightSSH_g, data = hare.rich)
 
 summary(vaanNPhr.exp)
 
-# confint(vaanNPhr.exp)
+confint(vaanNPhr.exp)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1313,6 +1375,8 @@ summary(vaanNPhr.exp)
 vaanNPcv.exp <- lm(HRsize ~ VAAN_NP_CVar + WeightSSH_g, data = hare.rich)
 
 summary(vaanNPcv.exp)
+
+confint(vaanNPcv.exp)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1326,7 +1390,7 @@ vaannp.plus <- lm(HRsize ~ VAAN_NP_mean+VAAN_NP_CVar, data = hare.rich)
 
 summary(vaannp.plus)
 
-# confint(vaannp.plus)
+confint(vaannp.plus)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1340,7 +1404,7 @@ vaannp.joint <- lm(HRsize ~ VAAN_NP_mean*VAAN_NP_CVar, data = hare.rich)
 
 summary(vaannp.joint)
 
-# confint(vaannp.joint)
+confint(vaannp.joint)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1383,6 +1447,8 @@ vaannp.sw <- lm(HRsize ~ VAAN_NP_mean+VAAN_NP_CVar+WeightSSH_g,
                 data = hare.rich)
 
 summary(vaannp.sw)
+
+confint(vaannp.sw)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1396,6 +1462,8 @@ vaannp.jsw <- lm(HRsize ~ VAAN_NP_mean*VAAN_NP_CVar+WeightSSH_g,
                  data = hare.rich)
 
 summary(vaannp.jsw)
+
+confint(vaannp.jsw)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1446,25 +1514,31 @@ rsqdf$Modnames <- as_factor(rsqdf$Modnames)
 # save now complete AICc table to a new object
 vaanNPaicRsq <- vaanNP_aicctab %>% merge(., rsqdf) %>% arrange(., Delta_AICc) 
 
-gt(vaanNPaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
-  tab_header("Model Selection for Blueberry N:P") %>% 
+vaanNPtab50 <- gt(vaanNPaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
+  tab_header("Model Selection for Lowbush blueberry N:P") %>% 
     cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", 
              Delta_AICc = html("&Delta; AICc"), ModelLik ="Model Likelihood", 
              AICcWt = "AICc Weight", LL ="Log-Lik", 
              Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+
+gtsave(vaanNPtab50, "../Results/VAAN_NP_50modseltab.tex")
+
+vaanNPtab50
 ```
 
 
-### Blueberry C:P  {.tabset .tabset-fade .tabset-pills}
+### Lowbush blueberry C:P  {.tabset .tabset-fade .tabset-pills}
 
 Click on each tab to see the summary and diagnostic plots for each model.
 
 #### Intercept-only
 ```{r VAAN-CP-null, echo=TRUE, tidy=TRUE}
-# 5. Blueberry CP mean
+
 vaancpnull <- lm(HRsize ~ 1, data = hare.rich)
 
 summary(vaancpnull)
+
+confint(vaancpnull)
 ```
 
 #### Mean-only
@@ -1508,6 +1582,8 @@ confint(vaanCPhr)
 vaanCPcvhr <- lm(HRsize ~ VAAN_CP_CVar, data = hare.rich)
 
 summary(vaanCPcvhr)
+
+confint(vaanCPcvhr)
 ```
 
 <!-- *Diagnostic plots* -->
@@ -1522,7 +1598,7 @@ vaanCPhr.exp <- lm(HRsize ~ VAAN_CP_mean + WeightSSH_g, data = hare.rich)
 
 summary(vaanCPhr.exp)
 
-# confint(vaanCPhr.exp)
+confint(vaanCPhr.exp)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1564,6 +1640,8 @@ summary(vaanCPhr.exp)
 vaanCPcv.exp <- lm(HRsize ~ VAAN_CP_CVar + WeightSSH_g, data = hare.rich)
 
 summary(vaanCPcv.exp)
+
+confint(vaanCPcv.exp)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1577,7 +1655,7 @@ vaancp.plus <- lm(HRsize ~ VAAN_CP_mean+VAAN_CP_CVar, data = hare.rich)
 
 summary(vaancp.plus)
 
-# confint(vaancp.plus)
+confint(vaancp.plus)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1590,6 +1668,8 @@ summary(vaancp.plus)
 vaancp.joint <- lm(HRsize ~ VAAN_CP_mean*VAAN_CP_CVar, data = hare.rich)
 
 summary(vaancp.joint)
+
+confint(vaancp.joint)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1632,6 +1712,8 @@ vaancp.sw <- lm(HRsize ~ VAAN_CP_mean+VAAN_CP_CVar+WeightSSH_g,
                 data = hare.rich)
 
 summary(vaancp.sw)
+
+confint(vaancp.sw)
 ```
 
 <!-- *Diagnostic Plots* -->
@@ -1695,12 +1777,16 @@ rsqdf$Modnames <- as_factor(rsqdf$Modnames)
 # save now complete AICc table to a new object
 vaanCPaicRsq <- vaanCP_aicctab %>% merge(., rsqdf) %>% arrange(., Delta_AICc) 
 
-gt(vaanCPaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
-  tab_header("Model Selection for Blueberry C:P") %>% 
+vaanCPtab50 <- gt(vaanCPaicRsq) %>% fmt_number(columns = 3:9, decimals = 3) %>% 
+  tab_header("Model Selection for Lowbush blueberry C:P") %>% 
     cols_label(Modnames ="Models formula", K = "K", AICc = "AICc", 
              Delta_AICc = html("&Delta; AICc"), ModelLik ="Model Likelihood", 
              AICcWt = "AICc Weight", LL ="Log-Lik", 
              Cum.Wt = "Cumulative Weight", Rsq = html("R<sup>2</sup>"))
+
+gtsave(vaanCPtab50, "../Results/VAAN_CP_50modseltab.tex")
+
+vaanCPtab50
 ```
 
 ### Table summary of AICc top models
@@ -1726,38 +1812,40 @@ top.mods[[8]] <- vaanCPaicRsq[3,]
 
 # Red maple N:P ratio top models
 top.mods[[9]] <- acruNPaicRsq[1,]
-top.mods[[10]] <- acruNPaicRsq[5,]
+top.mods[[10]] <- acruNPaicRsq[3,]
+top.mods[[11]] <- acruNPaicRsq[4,]
 
 # Red maple C:N ratio top models
-top.mods[[11]] <- acruCNaicRsq[1,]
-top.mods[[12]] <- acruCNaicRsq[2,]
+top.mods[[12]] <- acruCNaicRsq[1,]
 top.mods[[13]] <- acruCNaicRsq[3,]
 
-top.mods %>% bind_rows() %>% 
+SumTab50 <-top.mods %>% bind_rows() %>% 
   gt() %>% 
   fmt_number(columns = 3:9, decimals = 3) %>% 
-  tab_row_group(., group = "Blueberry C:N top models", rows = c(1:4)) %>% 
-  tab_row_group(., group = "Blueberry N:P top models", rows = c(5,6)) %>% 
-  tab_row_group(., group = "Bluberry C:P top models", rows = c(7,8)) %>% 
-  tab_row_group(., group = "Red maple N:P top models", rows = c(9,10)) %>% 
-  tab_row_group(., group = "Red maple C:N top models", rows = c(11:13)) %>% 
+  tab_row_group(., group = "Lowbush blueberry C:N top models", rows = c(1:4)) %>% 
+  tab_row_group(., group = "Lowbush blueberry N:P top models", rows = c(5,6) ) %>% 
+  tab_row_group(., group = "Lowbush blueberry C:P top models", rows = c(7,8)) %>% 
+  tab_row_group(., group = "Red maple N:P top models", rows = c(9:11)) %>% 
+  tab_row_group(., group = "Red maple C:N top models", rows = c(12,13)) %>% 
   cols_hide(columns = vars(AICc, ModelLik, AICcWt, Cum.Wt)) %>% 
   cols_label(Modnames = "Model", K = "K", Delta_AICc = html("&Delta;AICc"), 
-             LL ="LL", Rsq = html("R<sup>2</sup>")) 
+             LL ="LL", Rsq = html("R<sup>2</sup>"))
 
-# %>% gtsave(filename = "../Results/ModSel_summaryTab.tex")
+gtsave(SumTab50, filename = "../Results/ModSel50kUD_SummaryTable.tex")
+
+SumTab50
 ```
 
 The table below includes a breakdown of the uninformative parameters we removed, 
 for each stoichiometric ratio-plant species pair. 
 
-Model group               Uninformative Parameters
--------------------       --------------------------------
-Blueberry C:N ratio       Body Weight, Mean-CV interaction
-Blueberry N:P ratio       None
-Blueberry C:P ratio       Body Weight
-Red maple N:P ratio       Mean, Body Weight
-Red maple C:N ratio       None
+Model group                       Uninformative Parameters
+---------------------------       --------------------------------
+Lowbush blueberry C:N ratio       Body Weight, Mean-CV interaction
+Lowbush blueberry N:P ratio       None
+Lowbush blueberry C:P ratio       Body Weight 
+Red maple N:P ratio               Mean, Body Weight
+Red maple C:N ratio               Mean, Mean-CV interaction
 
 
 <!-- # References -->

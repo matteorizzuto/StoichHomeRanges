@@ -28,15 +28,15 @@ output:
 fontsize: 11pt
 geometry: margin=1in
 documentclass: article    
-bibliography: ../bibliography.bib
-csl: ../oikos.csl
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/ecology.csl
 editor_options: 
   chunk_output_type: console
 ---
 
 ```{r dependencies-load, eval=FALSE, include=FALSE, tidy=TRUE}
-knitr::knit('StoichiometryOfHomeRanges.Rmd', tangle=TRUE)
-source('StoichiometryOfHomeRanges.R')
+# knitr::knit('StoichiometryOfHomeRanges.Rmd', tangle=TRUE)
+# source('StoichiometryOfHomeRanges.R')
 ```
 
 
@@ -60,11 +60,11 @@ per year, and the dataset containing the live-trapping and demographic data.
 # Load the triangulation raw data
 rawData17 <- read.csv("../Data/VHF_CleanData_2017.csv", header = TRUE) # 2017
 rawData18 <- read.csv("../Data/VHF_CleanData_2018.csv", header = TRUE) # 2018
-rawData19 <- read.csv("../Data/TelemetryPoints_VHF_2019.csv", 
+rawData19 <- read.csv("../Data/VHF_CleanData_2019.csv", 
                       header = TRUE) # 2019
 
-# Switch back to VHF_CleanData_2019.csv to run with data pre Bella's corrections 
-# from Dec 2019
+# Switch back to TelemetryPoints_VHF_2019.csv to run with data pre Bella's corrections from 07 April 2021
+# Use VHF_CleanData_2019_OLD.csv to run with data pre Bella's corrections from 18 December 2019
 
 # Load hare trapping and demographic data, this contains the eartag number
 # which allows us to track if individuals survived multiple years
@@ -110,7 +110,7 @@ Universal Trasverse Mercator with these specifications:
 ```{r rawdata-crs-conversion, echo=TRUE, tidy=TRUE}
 # 2019 uses lat/long and 2017-2018 use UTM
 # convert all of them to meters to match stoich raster CRS
-# code developed by Isabella C. Richmond (https://gitlab.com/icrichmond/)
+# code developed by Isabella C. Richmond (https://github.com/icrichmond/HareSpaceUse)
 # note that ICR uses the notation "VHFXXXX" to name the telemetry datasets, 
 # where XXXX is the year of sampling in its 4 digits notation 
  
@@ -121,6 +121,7 @@ proj4string(rawData17) <- CRS("+init=epsg:32622")
 rawData17 <- spTransform(rawData17, CRS("+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m +no_defs"))
 rawData17 <- as.data.frame(rawData17)
 rawData17$UTMZone <- as.integer(22)
+rawData17 <- dplyr::relocate(rawData17, UTMZone, .before = Easting)
 
 
 coordinates(rawData18) <- c("Easting", "Northing")
@@ -129,6 +130,7 @@ proj4string(rawData18) <- CRS("+init=epsg:32622")
 rawData18 <- spTransform(rawData18, CRS("+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m +no_defs"))
 rawData18 <- as.data.frame(rawData18)
 rawData18$UTMZone <- as.integer(22)
+rawData18 <- dplyr::relocate(rawData18, UTMZone, .before = Easting)
 
 
 coordinates(rawData19) <- c("Easting", "Northing")
@@ -137,6 +139,7 @@ proj4string(rawData19) <- CRS("+proj=longlat +datum=WGS84")
 rawData19 <- spTransform(rawData19, CRS("+proj=tmerc +lat_0=0 +lon_0=-61.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +units=m +no_defs"))
 rawData19 <- as.data.frame(rawData19)
 rawData19$UTMZone <- as.integer(22)
+rawData19 <- dplyr::relocate(rawData19, UTMZone, .before = Easting)
 ```
 
 While in the field, we collected several variables that we are not going to use 
@@ -219,11 +222,11 @@ Data18 <- drop_na(Data18, Azimuth)
 Data19 <- drop_na(Data19, Azimuth)
 
 # Set year variable
-Data17 <- add_column(Data17, Year = "2017")
+Data17 <- add_column(Data17, Year = "2017", .before = "Date")
 
-Data18 <- add_column(Data18, Year = "2018")
+Data18 <- add_column(Data18, Year = "2018", .before = "Date")
 
-Data19 <- add_column(Data19, Year = "2019")
+Data19 <- add_column(Data19, Year = "2019", .before = "Date")
 
 # Categorize times as AM or PM in Data19
 for (i in 1:(nrow(Data19) - 1)) {
@@ -445,7 +448,7 @@ want or cannot run this portion of the code. The pre-generated file can be
 found here: 
 `../Results/razimuth_lsfits.rds`
 
-```{r atm-fit, eval=FALSE, tidy=TRUE, results='hide'}
+```{r atm-fit, eval=FALSE, tidy=TRUE}
 tictoc::tic() # start timing how long it will take to run
 # Model all
 lsfits <- lapply(lsatms, atm_mcmc, n_mcmc = 10000, n_burn = 1000)
@@ -455,7 +458,7 @@ tictoc::toc() # return total run time
 Given the extremely long runtime of the above code chunk, saving its output is a
 good idea to save time in future iterations of this notebook.
 
-```{r atm-fits-save, eval=FALSE, tidy=TRUE, message=FALSE, results="hide"}
+```{r atm-fits-save, eval=FALSE, message=FALSE, results="hide", tidy=TRUE}
 # save the resulting model fits as and .rds object
 # this step allows us to not run the whole code each time, instead
 # skipping ahead of the most computational intensive part

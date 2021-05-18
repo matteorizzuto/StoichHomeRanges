@@ -28,8 +28,8 @@ output:
 fontsize: 11pt
 geometry: margin=1in
 documentclass: article    
-bibliography: ../bibliography.bib
-csl: ../oikos.csl
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/ecology.csl
 editor_options: 
   chunk_output_type: inline
 ---
@@ -167,7 +167,7 @@ olapmap_A1425 <-
         tm_borders(col = "grey") +
     tm_shape(bl_grid_pts) +
     tm_dots(size = 0.75, shape = 18, col = "red", alpha = 0.3) + # grid trap locs
-    tm_shape(A1425.2018.contSf) +
+    tm_shape(A1425.2018.contSf, is.master = T) +
     tm_lines(col = "id", palette = c("#a6611a", "#dfc27d"), title.col = " % 2018 UD", lwd = 2) +
     tm_shape(A1425.2019.contSf) + 
     tm_lines(col = "id", palette = c("#018571", "#80cdc1"), title.col = "% 2019 UD", lwd = 2) +
@@ -522,7 +522,7 @@ olapmap_A3769 <-
         tm_borders(col = "grey") +
     tm_shape(bl_grid_pts) +
     tm_dots(size = 0.75, shape = 18, col = "red", alpha = 0.3) + # grid trap locs
-    tm_shape(A3769.2018.contSf) + 
+    tm_shape(A3769.2018.contSf, is.master = T) + 
     tm_lines(col = "id", palette = c("#a6611a", "#dfc27d"), title.col = " % 2018 UD", lwd = 2) +
     tm_shape(A3769.2019.contSf) + 
     tm_lines(col = "id", palette = c("#018571", "#80cdc1"), title.col = "% 2019 UD", lwd = 2) +

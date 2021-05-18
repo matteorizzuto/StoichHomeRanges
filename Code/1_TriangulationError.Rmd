@@ -28,8 +28,8 @@ output:
 fontsize: 11pt
 geometry: margin=1in
 documentclass: article    
-bibliography: ../bibliography.bib
-csl: ../oikos.csl
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/ecology.csl
 editor_options: 
   chunk_output_type: inline
 ---
@@ -157,7 +157,7 @@ Finally we will store the new dataset in an object called `erData`.
 # break down "Date" column to its individual components but keep it in the dataset
 # then create a new column to uniquely identify collars between years
 trialData <- trialData %>% 
-  separate(., "Date", c("Year", "Month", "Day"), sep = "-", remove = FALSE) %>% 
+  tidyr::separate(., "Date", c("Year", "Month", "Day"), sep = "-", remove = FALSE) %>% 
   unite(., ID, c("Frequency", "Year"), sep = "_", remove = FALSE)  
 
 # isolate the IDs of each data entry, i.e. its unique Frequency
@@ -478,6 +478,6 @@ err_median <- with(trials.triangd_sf, tapply(trials.triangd_sf$Error, trials.tri
 ```
 
 Thus, according to our analyses, the mean error for MR in 2017 was 
-**`r prettyNum(err_mean[2], digits = 3)` $\pm$ `r prettyNum(err_sd[2], digits = 3)`** m, 
+**`r prettyNum(err_mean[2], digits = 3)`** $\pm$ **`r prettyNum(err_sd[2], digits = 3)`** m, 
 whereas for BS in 2018 it was 
-**`r prettyNum(err_mean[1], digits = 3)` $\pm$ `r prettyNum(err_sd[1], digits = 3)`** m.
+**`r prettyNum(err_mean[1], digits = 3)`** $\pm$ **`r prettyNum(err_sd[1], digits = 4)`** m.

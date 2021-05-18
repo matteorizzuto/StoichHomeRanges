@@ -28,18 +28,18 @@ output:
 fontsize: 11pt
 geometry: margin=1in
 documentclass: article    
-bibliography: ../bibliography.bib
-csl: ../oikos.csl
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/ecology.csl
 editor_options: 
   chunk_output_type: inline
 ---
 
 ```{r eval=FALSE, include=FALSE, tidy=TRUE}
-knitr::knit('StoichiometryOfHomeRanges.Rmd', tangle=TRUE)
-source('StoichiometryOfHomeRanges.R')
-
-knitr::knit('razimuthTriangulation.Rmd', tangle=TRUE)
-source('razimuthTriangulation.R')
+# knitr::knit('StoichiometryOfHomeRanges.Rmd', tangle=TRUE)
+# source('StoichiometryOfHomeRanges.R')
+# 
+# knitr::knit('razimuthTriangulation.Rmd', tangle=TRUE)
+# source('razimuthTriangulation.R')
 ```
 
 Here we estimate home range size of our snowshoe hares using the autocorrelated
@@ -341,15 +341,15 @@ function, `plotVariograms`. We are going to look only at the zoomed out variogra
 i.e. the ones that show the long-term behaviour of our animals, as we conducted
 only one triangulation attempt per day per collar. The `plotVariograms` function
 was developed by @Droghini2020. Each variogram is saved as a `.png` image in 
-`../Results/Variograms/Data`.
+`../Results/Variograms/Data/`.
 
 ```{r variograms-check, echo=TRUE, tidy=TRUE, message=FALSE}
 # looking at the variograms to explore space use patterns
 # load varioPlot function from function-plotVariograms.R 
 # zoom is false because there is only one measurement taken per day (max)
 source("function-plotVariograms.R")
-par(mar=c(2,2,2,2), mfrow=c(7,5))
-varioPlot(hares.telem.clean, filePath="../Results/Variograms/Data", zoom = FALSE)
+par(mar=c(1,1,1,1), mfrow=c(7,5))
+varioPlot(hares.telem.clean, filePath="../Results/Variograms/Data/", zoom = FALSE)
 # variograms look ok - could be better
 ```
 
@@ -396,7 +396,7 @@ going to fit the ctmm using the perturbative hybrid residual maximum likelihood
 sizes like ours [@Fleming2019]. 
 
 > **Note**: the code chunk below can take a while to run. On a machine with a
-Quad-Core Intel Core i7 2.5 GHz with 16 Gb RAM, it took about 30 minutes.
+Quad-Core Intel Core i7 2.5 GHz with 16 Gb RAM, it took about **30 minutes**.
 
 ```{r ctmm-fit, eval=FALSE, tidy=TRUE, message=FALSE, warning=FALSE}
 tictoc::tic() # start timing 
@@ -475,9 +475,9 @@ each variogram as `.png` image in `../Results/Variograms/Models`.
 
 ```{r ctmm-variograms-fit, echo=TRUE, tidy=TRUE, message=FALSE, warning=FALSE}
 # plot variograms with model fit
-filePath <- paste("../Results/Variograms/Models")
+filePath <- paste("../Results/Variograms/Models/")
 
-par(mar=c(2,2,2,2), mfrow=c(7,5))
+par(mar=c(1,1,1,1), mfrow=c(7,5))
 
 lapply(1:length(hares.telem.clean), 
        function (a) {
@@ -492,8 +492,8 @@ lapply(1:length(hares.telem.clean),
               level=c(0.5,0.95),
               main=names(hares.fit.e[a]))
          
-         dev.copy(png,finalName)
-         dev.off()
+         # dev.copy(png,finalName)
+         # dev.off()
          
        }
 )
@@ -577,14 +577,16 @@ method [@Fleming2019].
 ```{r akde-estimation, eval=FALSE, tidy=TRUE}
 # calculate home ranges
 # debias = TRUE debiases the distribution for area estimation (AKDEc, Fleming et al., 2019)
+tictoc::tic()
 homeRanges <- akde(data=hares.telem.clean, debias=TRUE, CTMM=finalMods, grid=ee)
+tictoc::toc()
 ```
 
 Let's save this large `homeRanges` object as an `.rds` file for ease of access.
 
 ```{r akde-save, eval=FALSE, tidy=TRUE}
-# export homeRanges
-# saveRDS(homeRanges, "../Results/akdehomeranges.rds")
+# export homeRanges 
+saveRDS(homeRanges, "../Results/akdehomeranges.rds")
 ```
 
 Let's load the file we just saved.
@@ -592,6 +594,7 @@ Let's load the file we just saved.
 ```{r akde-load, echo=TRUE, tidy=TRUE}
 homeRanges <- readRDS("../Results/akdehomeranges.rds")
 ```
+
 
 ### Home range area estimation
 
@@ -711,6 +714,8 @@ maple in the areas used by our snowshoe hares. First, let's clip the StDMs
 rasters to our study area. This will make spatial operations a bit less time 
 and computation intensive.
 
+> **Note**: The code below may, some time, throw an error when calling function `projectRaster()` from the `raster` package. A possible reason for this error has to do with the `raster` package dependencies on the `PROJ` library, which is undergoing important updates as of the time of this writing. Adding the argument `res` to the function call, as done below, appears to solve the error and correctly produce the reprojected raster objects. 
+
 ```{r stdms-clip, echo=TRUE, tidy=TRUE, fig.cap="Clipped StDMs predictions raster for lowbush blueberry C:N ratio, before (left) and after (right) reprojection to the WGS84 UTM Zone 22 datum."}
 # define the extent of our study area 
 e <- extent(860000, 863000, 5383000, 5386000)
@@ -726,11 +731,11 @@ acrucnclip <- crop(acruCN, e)
 acrunpclip <- crop(acruNP, e)
 
 # re-project rasters so that they are using an up to date datum (WGS84 UTM Zone 22)
-vaancnclip <- projectRaster(vaancnclip, crs="+init=epsg:32622")
-vaancpclip <- projectRaster(vaancpclip, crs="+init=epsg:32622")
-vaannpclip <- projectRaster(vaannpclip, crs="+init=epsg:32622")
-acrucnclip <- projectRaster(acrucnclip, crs="+init=epsg:32622")
-acrunpclip <- projectRaster(acrunpclip, crs="+init=epsg:32622")
+vaancnclip <- projectRaster(vaancnclip, res=c(29.6,29.6), crs="+init=epsg:32622")
+vaancpclip <- projectRaster(vaancpclip, res=c(29.6,29.6), crs="+init=epsg:32622")
+vaannpclip <- projectRaster(vaannpclip, res=c(29.6,29.6), crs="+init=epsg:32622")
+acrucnclip <- projectRaster(acrucnclip, res=c(29.6,29.6), crs="+init=epsg:32622")
+acrunpclip <- projectRaster(acrunpclip, res=c(29.6,29.6), crs="+init=epsg:32622")
 image(vaancnclip) # check the re-projecting worked
 
 # create a rasterStack from these rasters 

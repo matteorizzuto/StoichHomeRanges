@@ -30,29 +30,29 @@ documentclass: article
 bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
 csl: ../Manuscripts/functional-ecology.csl
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r, eval=FALSE, echo=TRUE, tidy=TRUE}
 # if running as a standalone, change chunk options to evaluation this 
 # code chunk
-knit("StoichiometryOfHomeRanges.Rmd", tangle = TRUE)
-source("StoichiometryOfHomeRanges.R")
-
-knit("razimuthTriangulation.Rmd", tangle = TRUE)
-source("razimuthTriangulation.R")
-
-knit("aKDEHomeRangeEstimation.Rmd", tangle = TRUE)
-source("aKDEHomeRangeEstimation.R")
-
-knit("ModelStoichHR.Rmd", tangle = TRUE)
-source("ModelStoichHR.R")
-
-knit("75kUDHRModels.Rmd", tangle = TRUE)
-source("75kUDHRModels.R")
-
-knit("90kUDHRModels.Rmd", tangle = TRUE)
-source("90kUDHRModels.R")
+# knit("StoichiometryOfHomeRanges.Rmd", tangle = TRUE)
+# source("StoichiometryOfHomeRanges.R")
+# 
+# knit("razimuthTriangulation.Rmd", tangle = TRUE)
+# source("razimuthTriangulation.R")
+# 
+# knit("aKDEHomeRangeEstimation.Rmd", tangle = TRUE)
+# source("aKDEHomeRangeEstimation.R")
+# 
+# knit("ModelStoichHR.Rmd", tangle = TRUE)
+# source("ModelStoichHR.R")
+# 
+# knit("75kUDHRModels.Rmd", tangle = TRUE)
+# source("75kUDHRModels.R")
+# 
+# knit("90kUDHRModels.Rmd", tangle = TRUE)
+# source("90kUDHRModels.R")
 ```
 
 In this section, we produce both the figures included in the main text and 
@@ -104,7 +104,7 @@ pair_colors[c(33, 34)] <- "#CB904D"
 Now, we can create the plots. Note that we only show the code necessary to produce
 each figure in the main text here, not the figure itself. 
 
-### Figure 1d
+### Figure 2
 ```{r fig1d, echo=TRUE, tidy=TRUE}
 vis1 <- ggplot(hare.stoich, aes(x = VAAN_CN_mean, y = VAAN_CN_CVar)) + 
   geom_point(aes(fill = EarTag, shape = EarTag, size = HRsize)) + 
@@ -113,21 +113,21 @@ vis1 <- ggplot(hare.stoich, aes(x = VAAN_CN_mean, y = VAAN_CN_CVar)) +
   scale_shape_manual(name = "Ear tag", 
                      values = pair_shapes) +
   scale_size_continuous(name = "Home Range (ha)", range = c(3,12), breaks = scales::pretty_breaks(3)) +
-  xlab("Average Blueberry C:N") + 
-  ylab("Blueberry C:N CV") + 
+  xlab("Average Lowbush blueberry C:N") + 
+  ylab("Lowbush blueberry C:N CV") + 
   guides(fill = guide_legend(override.aes = list(size=5)), size = guide_legend(override.aes = list(shape = 21))) +
-  geom_text_repel(aes(x = VAAN_CN_mean, y = VAAN_CN_CVar, label = EarTag), size = 5, box.padding = 1.25) + 
-  theme_classic() + theme(text = element_text(size = 35), legend.position = "bottom", legend.box = "vertical", legend.box.just = "left")
+  # geom_text_repel(aes(x = VAAN_CN_mean, y = VAAN_CN_CVar, label = EarTag), size = 5, box.padding = 1.25) + 
+  theme_classic() + theme(text = element_text(size = 25))
 
-# ggsave(vis1, filename = "../Results/MeanvsCV_vaanCN.pdf", device = "pdf", dpi = 600, width = 12, height = 18)
+ggsave(vis1, filename = "../Results/MeanvsCV_vaanCN.pdf", device = "pdf", dpi = 600, width = 18, height = 12)
 ```
 
-### Figure 2 
+### Figure 3 
 
 ```{r fig2-plots, echo=TRUE, tidy=TRUE}
 # Blueberry Mean C:N - 50% kUD
 vis2_50kUD <- ggplot(hare.stoich, aes(x = VAAN_CN_mean, y = HRsize)) + 
-  geom_smooth(data = fortify(vaanCNhr), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
+  geom_smooth(data = broom::augment(vaanCNhr), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
   geom_point(aes(fill = EarTag, shape = EarTag), size = 8) +
   scale_fill_manual(name= "Ear tag", 
                     values = pair_colors) +
@@ -140,20 +140,20 @@ vis2_50kUD <- ggplot(hare.stoich, aes(x = VAAN_CN_mean, y = HRsize)) +
 
 # Blueberry Mean C:N - 75% kUD
 vis2_75kUD <- ggplot(hare.stoich.75, aes(x = VAAN_CN_mean, y = HRsize)) + 
-  geom_smooth(data = fortify(vaanCNhr.75), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
+  geom_smooth(data = broom::augment(vaanCNhr.75), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
   geom_point(aes(fill = EarTag, shape = EarTag), size = 8) +
   scale_fill_manual(name= "Ear tag", 
                     values = pair_colors) +
   scale_shape_manual(name = "Ear tag", 
                      values = pair_shapes) +
   ylab("Home Range size - 75% kUD (ha)") + 
-  xlab("Average Blueberry C:N") +
+  xlab("Average Lowbush blueberry C:N") +
   # geom_text_repel(aes(x = VAAN_CN_mean, y = HRsize, label = EarTag), size = 5) + 
   theme_classic() + theme(text = element_text(size = 22))
 
 # Blueberry Mean C:N - 90% kUD
 vis2_90kUD <- ggplot(hare.stoich.90, aes(x = VAAN_CN_mean, y = HRsize)) + 
-  geom_smooth(data = fortify(vaanCNhr.90), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
+  geom_smooth(data = broom::augment(vaanCNhr.90), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
   geom_point(aes(fill = EarTag, shape = EarTag), size = 8) +
   scale_fill_manual(name= "Ear tag", 
                     values = pair_colors) +
@@ -171,7 +171,7 @@ vis2all <- vis2_50kUD + vis2_75kUD + vis2_90kUD + plot_layout(ncol = 3, nrow = 1
 
 # Blueberry C:N Coefficient of Variation - 50% kUD
 vis3_50kUD <- ggplot(hare.stoich, aes(x = VAAN_CN_CVar, y = HRsize)) + 
-  geom_smooth(data = fortify(vaanCNcvhr), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
+  geom_smooth(data = broom::augment(vaanCNcvhr), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
   geom_point(aes(fill = EarTag, shape = EarTag), size = 8) + 
   scale_fill_manual(name= "Ear tag", 
                     values = pair_colors) +
@@ -184,20 +184,20 @@ vis3_50kUD <- ggplot(hare.stoich, aes(x = VAAN_CN_CVar, y = HRsize)) +
 
 # Blueberry C:N Coefficient of Variation - 75% kUD
 vis3_75kUD <- ggplot(hare.stoich.75, aes(x = VAAN_CN_CVar, y = HRsize)) + 
-  geom_smooth(data = fortify(vaanCNcvhr.75), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
+  geom_smooth(data = broom::augment(vaanCNcvhr.75), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
   geom_point(aes(fill = EarTag, shape = EarTag), size = 8) + 
   scale_fill_manual(name= "Ear tag", 
                     values = pair_colors) +
   scale_shape_manual(name = "Ear tag", 
                      values = pair_shapes) +
   ylab("Home Range size - 75% kUD (ha)") + 
-  xlab("Blueberry C:N CV") + 
+  xlab("Lowbush blueberry C:N CV") + 
   # geom_text_repel(aes(x = VAAN_CN_CVar, y = HRsize, label = EarTag)) + 
   theme_classic() + theme(text = element_text(size = 22))
 
 # Blueberry C:N Coefficient of Variation - 90% kUD
 vis3_90kUD <- ggplot(hare.stoich.90, aes(x = VAAN_CN_CVar, y = HRsize)) + 
-  geom_smooth(data = fortify(vaanCNcvhr.90), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
+  geom_smooth(data = broom::augment(vaanCNcvhr.90), method = "lm", color = "grey", alpha = 0.15, lwd = 2) + 
   geom_point(aes(fill = EarTag, shape = EarTag), size = 8) + 
   scale_fill_manual(name= "Ear tag", 
                     values = pair_colors) +
@@ -218,13 +218,13 @@ vis3all <- vis3_50kUD + vis3_75kUD + vis3_90kUD + plot_layout(ncol = 5, nrow = 1
 visall <- (vis2_50kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis2_75kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis2_90kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis3_50kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis3_75kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + (vis3_90kUD + theme(plot.margin = unit(c(0,12,0,12), "pt"))) + plot_layout(ncol = 3, nrow = 2, guides = "collect", widths = c(1.5, 1.5, 1.5)) + plot_annotation(tag_levels = "a", tag_prefix = "(", tag_suffix = ")")
 
 # save it
-# ggsave(visall, filename = "../Results/VAAN_HRvsCN.pdf", device = "pdf", dpi = 600, width = 25, height = 15)
+ggsave(visall, filename = "../Results/VAAN_HRvsCN.pdf", device = "pdf", dpi = 600, width = 25, height = 15)
 ```
 
-## Elemental concentrations of N and P in Red Maple and Blueberry
+## Elemental concentrations of N and P in Red maple and Lowbush blueberry
 
 Here we use boxplots to visualize data on the elemental
-(% dry weight) composition of both Red Maple and Blueberry. Note that
+(% dry weight) composition of both Red maple and Lowbush blueberry. Note that
 we report the figure itself in the SI (Figure SXX), so that here we 
 only show the code necessary to produce it.
 
@@ -262,7 +262,7 @@ epPlot <- ggplot(data = epData, aes(x = Species, y = Content, fill = Species)) +
                  outlier.intersect = TRUE, alpha = 0.75,
                  jitter.size = 3, outlier.size = 3) +
   ylab("Element Content (% dry weight)") +
-  scale_x_discrete(labels = c("Red Maple", "Blueberry")) +
+  scale_x_discrete(labels = c("Red maple", "Lowbush blueberry")) +
   facet_wrap(~Element, scales = "free_y")+
   theme_classic() +
   theme(legend.position = "none",
@@ -276,7 +276,7 @@ epPlot <- ggplot(data = epData, aes(x = Species, y = Content, fill = Species)) +
 Here we present a simple bar plot of the frequency with which we recorded browsing
 by snowshoe hare on our four plant species of interest. We collected browsing data 
 during the summer of 2016, as we collected samples to describe and model the
-elemental phenotype of each plant species. BLueberry and red maple are, overall,
+elemental phenotype of each plant species. Lowbush blueberry and red maple are, overall,
 the more browsed plants in our study area, followed by white birch. However, no
 StDM ranked higher than the intercept for white birch, so we excluded it from
 our analyses of home range size and plant stoichiometry.
@@ -289,10 +289,10 @@ browseData <- read.csv("../Data/Plant_Browse.csv", header = TRUE) %>% dplyr::ren
 browseData$hareBrowse <- as.factor(browseData$hareBrowse)
 
 species_labeller <- c(
-  "ABBA" = "Balsam Fir",
-  "ACRU" = "Red Maple",
-  "BEPA" = "White Birch",
-  "VAAN" = "Blueberry"
+  "ABBA" = "Balsam fir",
+  "ACRU" = "Red maple",
+  "BEPA" = "White birch",
+  "VAAN" = "Lowbush nlueberry"
 )
 
 
@@ -340,7 +340,7 @@ age + sex
 ```{r ACRU-HR-1, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(x = ACRU_CN_mean, y = HRsize, shape = SamplingYear)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
-  xlab("Red Maple Mean C:N") + 
+  xlab("Red maple Mean C:N") + 
   ylab("Home Range Size (ha)") + 
   theme_classic()
 ```
@@ -348,20 +348,20 @@ ggplot(hare.stoich, aes(x = ACRU_CN_mean, y = HRsize, shape = SamplingYear)) +
 ```{r VAAN-HR-1, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(x = VAAN_CN_mean, y = HRsize, shape = SamplingYear)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) +
-  xlab("Blueberry Mean C:N") + 
+  xlab("Lowbush blueberry Mean C:N") + 
   ylab("Home Range Size (ha)") + 
   theme_classic()
 ```
 
 ### N:P Ratio
 ```{r ACRU-HR-2, echo=TRUE, tidy=TRUE}
-ggplot(hare.stoich, aes(x = ACRU_NP_mean, y = HRsize, shape = SamplingYear)) + geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + xlab("Red Maple Mean N:P") + ylab("Home Range Size (ha)") + theme_classic()
+ggplot(hare.stoich, aes(x = ACRU_NP_mean, y = HRsize, shape = SamplingYear)) + geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + xlab("Red maple Mean N:P") + ylab("Home Range Size (ha)") + theme_classic()
 ```
 
 ```{r VAAN-HR-2, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(x = VAAN_NP_mean, y = HRsize, shape = SamplingYear)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
-  xlab("Blueberry Mean N:P") + 
+  xlab("Lowbush blueberry Mean N:P") + 
   ylab("Home Range Size (ha)") + 
   theme_classic()
 ```
@@ -370,14 +370,14 @@ ggplot(hare.stoich, aes(x = VAAN_NP_mean, y = HRsize, shape = SamplingYear)) +
 ```{r VAAN-HR-3, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(x = VAAN_CP_mean, y = HRsize, shape = SamplingYear)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
-  xlab("Blueberry C:P") + 
+  xlab("Lowbush blueberry C:P") + 
   ylab("Home Range Size (ha)") + 
   theme_classic()
 ```
 
 ## Stoichiometric ratios mean vs CV {.tabset .tabset-fade .tabset-pills}
 
-### Red Maple C:N
+### Red maple C:N
 ```{r acrucn-mean-vs-cvar, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(ACRU_CN_mean, y = ACRU_CN_CVar)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
@@ -386,7 +386,7 @@ ggplot(hare.stoich, aes(ACRU_CN_mean, y = ACRU_CN_CVar)) +
   theme_classic() 
 ```
 
-### Red Maple N:P
+### Red maple N:P
 ```{r acrunp-mean-vs-cvar, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(ACRU_NP_mean, y = ACRU_NP_CVar)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
@@ -395,7 +395,7 @@ ggplot(hare.stoich, aes(ACRU_NP_mean, y = ACRU_NP_CVar)) +
   theme_classic() 
 ```
 
-### Blueberry C:N
+### Lowbush blueberry C:N
 ```{r vaancn-mean-vs-cvar, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(VAAN_CN_mean, y = VAAN_CN_CVar)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
@@ -404,7 +404,7 @@ ggplot(hare.stoich, aes(VAAN_CN_mean, y = VAAN_CN_CVar)) +
   theme_classic() 
 ```
 
-### Blueberry N:P
+### Lowbush blueberry N:P
 ```{r vaannp-mean-vs-cvar, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(VAAN_NP_mean, y = VAAN_NP_CVar)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) +
@@ -413,7 +413,7 @@ ggplot(hare.stoich, aes(VAAN_NP_mean, y = VAAN_NP_CVar)) +
   theme_classic() 
 ```
 
-### Blueberry C:P
+### Lowbush blueberry C:P
 ```{r vaancp-mean-vs-cvar, echo=TRUE, tidy=TRUE}
 ggplot(hare.stoich, aes(VAAN_CP_mean, y = VAAN_CP_CVar)) + 
   geom_point(aes(fill = SamplingYear), shape = 21, size = 4, alpha = 0.5) + 
@@ -583,7 +583,7 @@ mn1 + mn2 + mn3 + mn4 +  mn5 + mn6 + plot_layout(ncol = 3, nrow = 2,
   plot_annotation(tag_levels = "a", tag_prefix = "(", tag_suffix = ")")
 
 # save it
-ggsave("../Results/NvsMNuts.pdf", device = 'pdf', dpi = 600, width = 14, height = 8)
+# ggsave("../Results/NvsMNuts.pdf", device = 'pdf', dpi = 600, width = 14, height = 8)
 ```
 
 ## Overlap vs stoich
@@ -613,30 +613,30 @@ meanAKDEolap <- adply(aKDEolap, c(1,2)) %>%  # convert to dataframe
 hare.stoich.olap <- inner_join(hare.stoich, meanAKDEolap)
 
 # plots of mean overlap vs stoich
-a1 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = ACRU_CN_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Red Maple C:N") + ggtitle("Red Maple C:N") + theme_classic()
+a1 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = ACRU_CN_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Red maple C:N") + ggtitle("Red maple C:N") + theme_classic()
 
-a2 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = ACRU_NP_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Red Maple N:P") + ggtitle("Red Maple N:P") + theme_classic()
+a2 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = ACRU_NP_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Red maple N:P") + ggtitle("Red maple N:P") + theme_classic()
 
-a3 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_CN_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Blueberry C:N") + ggtitle("Blueberry C:N") + theme_classic()
+a3 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_CN_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Lowbush blueberry C:N") + ggtitle("Lowbush blueberry C:N") + theme_classic()
 
-a4 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_NP_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Blueberry N:P") + ggtitle("Blueberry N:P") + theme_classic()
+a4 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_NP_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Lowbush blueberry N:P") + ggtitle("Lowbush blueberry N:P") + theme_classic()
 
-a5 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_CP_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Blueberry C:P") + ggtitle("Blueberry C:P") + theme_classic()
+a5 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_CP_mean)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Mean Lowbush blueberry C:P") + ggtitle("Lowbush blueberry C:P") + theme_classic()
 
 atot <- a1 + a2 + a3 + a4 + a5 + plot_annotation(title = "Mean Stoichiometry and Mean home range overlap (BA)") + plot_layout(guides = "collect")
 
 atot
 
 # plots of mean overlap vs stoich CV
-b1 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = ACRU_CN_CVar)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Red Maple C:N CV") + ggtitle("Red Maple C:N") + theme_classic()
+b1 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = ACRU_CN_CVar)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Red maple C:N CV") + ggtitle("Red maple C:N") + theme_classic()
 
-b2 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = ACRU_NP_CVar)) +  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Red Maple N:P CV") + ggtitle("Red Maple N:P") + theme_classic()
+b2 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = ACRU_NP_CVar)) +  geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Red maple N:P CV") + ggtitle("Red maple N:P") + theme_classic()
 
-b3 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_CN_CVar)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Blueberry C:N CV") + ggtitle("Blueberry C:N") + theme_classic()
+b3 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_CN_CVar)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Lowbush blueberry C:N CV") + ggtitle("Lowbush blueberry C:N") + theme_classic()
 
-b4 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_NP_CVar)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1)  + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Blueberry N:P CV") + ggtitle("Blueberry N:P") + theme_classic()
+b4 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_NP_CVar)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1)  + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Lowbush blueberry N:P CV") + ggtitle("Lowbush blueberry N:P") + theme_classic()
 
-b5 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_CP_CVar)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Blueberry C:P CV") + ggtitle("Blueberry C:P") + theme_classic()
+b5 <- ggplot(hare.stoich.olap, aes(x = meanBA, y = VAAN_CP_CVar)) + geom_smooth(method = "lm", se = T, color = "lightgrey", alpha =.1) + geom_point(aes(color = CollarFrequency)) + xlab("Mean home range overlap (BA)") + ylab("Lowbush blueberry C:P CV") + ggtitle("Lowbush blueberry C:P") + theme_classic()
 
 btot <- b1 + b2 + b3 + b4 + b5 + plot_annotation(title = "Stoichiometry CV and Mean home range overlap (BA)") + plot_layout(guides = "collect")
 
@@ -649,8 +649,7 @@ Here we present kUD estimates for the home range of each of our snowshoe hares,
 drawing both the 50% ("core area"), 75%, and 90% isopleths on top of a 
 heat map of the whole Utilization Distribution.
 
-```{r akde-maps, echo=TRUE, tidy=TRUE, message=FALSE, warning=FALSE}
-
+```{r akde-maps, echo=TRUE, tidy=TRUE, message=FALSE, warning=FALSE, fig.show='asis'}
 # setup hare points
 hares.points <- hares.triangd %>% dplyr::select(., -COVt.x.y, -COV.x.x, -COV.y.y, -pid.x, -pid.y, -id.x, -id.y, -cpid) %>% dplyr:: rename(., CollarFrequency = indiv, Easting = long, Northing = lat)
 
@@ -744,25 +743,29 @@ for (i in 1:length(loopCIDs)) {
   aKDE.maps[[i]] <- 
     tm_shape(vaancnclip, bbox = bbox_temp, raster.downsample = FALSE) + 
     tm_raster(style = "pretty", palette = "-PRGn", 
-              legend.show = TRUE, title = "Blueberry C:N", alpha = 0.5) + 
+              legend.show = TRUE, title = "Lowbush blueberry C:N", alpha = 0.5) + 
     tm_shape(bl_grid_pts) + 
     tm_dots(size = 0.3, shape = 18, col = "red", alpha = 0.3) + # grid trap locs
     tm_shape(points.temp) +
     tm_dots(size = 0.3, shape = 21, col = "blue", alpha = 0.3) +
     tm_shape(aKDEsf.temp) + 
-    tm_lines(col = "id", palette = aKDE.pal, title.col = "% kUD -- ICR", lwd = 2) +
-    tm_compass(position = c("right", "top")) +
+    tm_lines(col = "id", palette = aKDE.pal, title.col = "UD isopleths", lwd = 2) +
+    tm_compass(position = c("right", "top"), size = 1, text.size = 0.7) +
     tm_scale_bar(width = 0.3, 
-                 text.size = 1.25,
+                 # text.size = 1.25,
                  position = c("right", "bottom")) + 
-    tm_layout(main.title = paste("Collar Frequency:", loopCIDs[i]),
-              # title = paste("Ear tag:", dots.temp$EarTag),
+    tm_layout(title = paste("Freq.", loopCIDs[i]),
+              main.title = paste("Ear tag:", points.temp$EarTag),
+              # main.title.size = 1,
+              # title.size = 1,
               legend.outside = TRUE, 
               legend.outside.position = "right",
               legend.text.size = 1.1,
               legend.title.size = 1.25,
-              asp = 1,
+              # asp = 1,
               frame = TRUE)
+  
+  aKDE.maps[[i]]
 
 }
 
@@ -771,7 +774,7 @@ aKDEmaps <- tmap_arrange(aKDE.maps)
 
 aKDEmaps
 
-# tmap_save(aKDEmaps, filename = "../Results/aKDEmaps.pdf", width = 20, height = 20, dpi = 600)
+tmap_save(aKDEmaps, filename = "../Results/aKDEmaps.png", width = 20, height = 20, dpi = 600)
 
 rm(homeRangesClean)
 ```
@@ -781,8 +784,8 @@ Here we plot the predictions of ratios values for C:N, C:P, and N:P produced
 using Stoichiometric Distribution Models [@Leroux2017]. We used these 
 predictions in the analyses above as estimates of the quality of plant food 
 resources in the home ranges of our collared snowshoe hares. Note that here we
-only present a map of the StDM predictions for blueberry C:N. If you would like
-to see maps for blueberry C:P, N:P, and red maple C:N, N:P predictions, re-knit
+only present a map of the StDM predictions for lowbush blueberry C:N. If you would like
+to see maps for lowbush blueberry C:P, N:P, and red maple C:N, N:P predictions, re-knit
 this notebook after un-commenting the relevant lines of code in the chunk below.
 
 ```{r raster-Maps, echo=TRUE, warning=FALSE, tidy=TRUE, fig.cap="Map of our snowshoe hare live-trapping grid in the youngest forest stand (20-40 years old), with stoichiometric distribution models predictions for lowbush blueberry C:N ratio."}
@@ -806,7 +809,7 @@ bl.study.area <- bl.study.area %>%  # take the bounding box ...
 # Mapping the raster underneath the grid and the 100% MCP
 vaanCNmap <- tm_shape(vaancnclip, bbox = bl.study.area) + 
   tm_raster(style = "cont", palette = "-PRGn", 
-            legend.show = TRUE, title = "Blueberry C:N", alpha = 0.75) + 
+            legend.show = TRUE, title = "Lowbush blueberry C:N", alpha = 0.75) + 
   # tm_shape(vaanCP, bbox = bl.study.area) + 
   # tm_raster(style = "cont", palette = "-PiYG", 
   #           legend.show = TRUE, title = "Blueberry C:P") + 
@@ -882,7 +885,7 @@ canada_s <- st_transform(canada_s, st_crs(grid_points_all))
 # Simplify the geometry of the coastline, simplifying the lines by removing 
 # vertices, while preserving the topology
 # This step should improve runtime of this section of the notebook
-nlcoast<- ms_simplify(nl_coastline)
+nlcoast<- ms_simplify(nl_coastline, keep = 0.002)
 
 nlcoastsf <- st_as_sf(nlcoast, crs = st_crs(na_coastline))
 
@@ -897,7 +900,6 @@ tnnp_line_rep <- st_transform(tnnp_line, crs = st_crs(grid_points_all))
 tnnp_poly <- st_polygonize(tnnp_line_rep)
 # create buffer
 tnnp_buff <- st_buffer(tnnp_poly, dist = 8000)
-
 
 # Create a bounding box for the study area, to show in the inset reference map
 st_bbox(grid_points_all)
@@ -945,6 +947,7 @@ output of this code chunk, as it is already available in the SI.
 tmap_mode("plot")
 # create map of canada with newfoundland highlighted
 canmap <- tm_shape(canada_s) + tm_polygons(col = "PRUID", palette = canmap_col, alpha = 0.5, border.alpha = 0.5) + tm_shape(study.area) + tm_symbols(col = "#e28dbe", border.col = "black", size = 0.25) + tm_layout(title = "(a)", title.position = c("left", "top"), asp=1, inner.margins = c(0.01, 0.01, 0.01, 0.01), bg.color = NA, legend.show = F) 
+
 # create the map of the NL with study area
 nlarea_map <- tm_shape(nl_sf, is.master = T) + tm_borders(alpha = 0.5) + tm_shape(tnnp_buff) + tm_polygons(col = "#e28dbe", border.col= "#e28dbe", alpha = 0.5) + tm_shape(tnnp_poly) + tm_polygons(col = "#e28dbe", border.col="black", lwd = 0.5) + tm_layout(title = "(b)", title.position = c("left", "top"), asp=1, inner.margins = c(0.01, 0.01, 0.01, 0.01), bg.color = NA, legend.show = F) 
 

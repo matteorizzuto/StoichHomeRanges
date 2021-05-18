@@ -36,8 +36,8 @@ output:
 fontsize: 11pt
 geometry: margin=1in
 documentclass: article    
-bibliography: ../bibliography.bib
-csl: ../oecologia.csl
+bibliography: ../Manuscripts/Rizzuto_etal_StoichHomeRanges.bib
+csl: ../Manuscripts/oecologia.csl
 editor_options: 
   chunk_output_type: inline
 header-includes:
@@ -93,7 +93,7 @@ name. The following table should be helpful in keeping track of what is what.
 Latin name                  Common Name             Acronym
 -----------------------     -----------             -------
 *Acer rubrum*               Red maple               ACRU
-*Vaccinium angustifolium*   lowbush blueberry       VAAN
+*Vaccinium angustifolium*   Lowbush blueberry       VAAN
 
 ## Recompiling this notebook
 
@@ -176,6 +176,8 @@ rgdal::rgdal_extSoftVersion()
 
 > The code below is optimized to run using `GDAL` version 3.x and above, and 
 `PROJ` version 6.x and above.
+
+> Additionally, versions of package `tmap` older than 3.3-1 can have issues handling objects of class `tibble`; specifically when using version 3.1 or older of package `tibble` (see [here](https://github.com/mtennekes/tmap/issues/551) for further details). We recommend using `tmap` version 3.3-1 or newer when re-running the notebooks that comprise these analyses, to avoid issue with generating some of the visual outputs.
 
 ```{r pkg-file-load, echo=TRUE, tidy=TRUE, message=FALSE}
 # Load packages that are either no longer maintained, not on CRAN, or in development
